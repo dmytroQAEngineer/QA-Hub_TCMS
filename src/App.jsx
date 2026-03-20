@@ -966,6 +966,7 @@ export default function QAHub(){
   const skipSave=useRef(true);
   const skipRunSave=useRef(true);
   const skipRunRemoteToastRef=useRef(true);
+  const runsRemoteFirstSnapshotRef=useRef(true);
 
   const [teams,setTeams]=useState(null);
   const [runs,setRuns]=useState({Ticketing:[],Travel:[],Compete:[]});
@@ -1021,15 +1022,30 @@ export default function QAHub(){
         if(!r?.value)return;
         const rem=JSON.parse(r.value);
         setRuns(prev=>{
-          if(JSON.stringify(prev)===JSON.stringify(rem)){
+          const equal=JSON.stringify(prev)===JSON.stringify(rem);
+          const isFirst=runsRemoteFirstSnapshotRef.current;
+          if(isFirst){
+            runsRemoteFirstSnapshotRef.current=false;
+            if(equal){
+              /* First snapshot matches local state (e.g. after get) — end suppress window without faking a skip */
+              skipRunRemoteToastRef.current=false;
+              return prev;
+            }
+            if(skipRunRemoteToastRef.current){
+              skipRunRemoteToastRef.current=false;
+              return rem;
+            }
+            showToast("Run updated by teammate","info");
             skipRunRemoteToastRef.current=false;
-            return prev;
+            return rem;
           }
+          if(equal)return prev;
           if(skipRunRemoteToastRef.current){
             skipRunRemoteToastRef.current=false;
             return rem;
           }
           showToast("Run updated by teammate","info");
+          skipRunRemoteToastRef.current=false;
           return rem;
         });
       }catch{/* parse optional */}
