@@ -18,7 +18,7 @@ const RAW_CASES = [
   [1002,"TC-002 Ticket inventory enforces hard limit no oversell","Ticket Management","Critical","Bob",true,
    "Ticket type exists with Quantity 2. Public checkout URL available. Test card: 4242 4242 4242 4242, expiry 12/34, CVC 123.",
    "The 3rd purchase attempt is blocked. Ticket shows Sold Out. No 3rd transaction in Stripe or Attendees.",
-   [["Create a ticket type with Quantity 2. Copy the public checkout URL.","Ticket exists with Quantity 2."],
+   [["Copy the public checkout URL for the ticket type (Quantity 2 is already set per preconditions).","Checkout URL is ready to use."],
     ["Open the checkout URL in Browser 1. Add 1 ticket and complete payment with the test card.","Purchase 1 succeeds."],
     ["Open the same URL in a second browser or incognito tab. Complete another purchase.","Purchase 2 succeeds. Both tickets are now sold."],
     ["Open the same URL in a third browser tab. Try to add the ticket to the cart.","Ticket shows as Sold Out. Add to cart button is disabled. No 3rd transaction in Attendees or Stripe."]]],
@@ -27,7 +27,7 @@ const RAW_CASES = [
    "QR code renders correctly. Snap Entry shows green success screen with correct holder name and ticket type.",
    [["Complete a ticket purchase. Wait for the order confirmation email.","Confirmation email arrives with a View Ticket link."],
     ["Open the email and click View Ticket.","The digital ticket page opens in your browser."],
-    ["Verify: QR image loads, holder name is correct, ticket type does NOT say unknown, wristband color is visible.","All items display correctly. No unknown text on the ticket."],
+    ["Verify: QR image loads, holder name is correct, ticket type shows the actual name (e.g. General Admission) and does NOT say unknown, wristband color is visible.","All items display correctly. Ticket type name is shown correctly, not the word unknown."],
     ["Open Snap Entry, log in, select the event, tap Entry Scan, and scan the QR code.","Green success screen appears. Holder name and ticket type are correct."]]],
   [1004,"TC-004 Ticket metadata collected before Stripe session","Ticket Management","Critical","Bob",true,
    "Event has Ticket Metadata configured: Ticket Holder Name (Required), Team Name (Optional), Jersey Number (Numeric, Required).",
@@ -52,9 +52,9 @@ const RAW_CASES = [
   [1007,"TC-007 Wristband color updates reflect on existing purchased tickets","Ticket Management","High","Alice",false,
    "A ticket has been purchased with Wristband Color set to White.",
    "After changing to Blue the digital ticket immediately shows Blue. All other data unchanged.",
-   [["Confirm the digital ticket currently shows White wristband color.","Digital ticket displays White wristband."],
+   [["Open the digital ticket from the confirmation email and confirm it currently shows White wristband color.","Digital ticket displays White wristband."],
     ["As Org Admin go to Tickets tab, find the ticket type, click Edit. Change color to Blue. Save.","Ticket type saved with Blue wristband color."],
-    ["Open the digital ticket again.","Ticket now shows Blue wristband. Change is immediate. All other details unchanged."]]],
+    ["Reload the digital ticket page in your browser (press F5 or use the browser refresh button).","Ticket now shows Blue wristband. All other details unchanged."]]],
   [1008,"TC-008 Revoke ticket QR becomes invalid immediately","Ticket Management","Critical","Bob",true,
    "A ticket purchase has been completed. Admin dashboard and Snap Entry on a mobile device are available.",
    "After revoking, status shows Revoked. Snap Entry shows red rejection. No check-in recorded.",
@@ -81,7 +81,8 @@ const RAW_CASES = [
    "10 dollar discount shown as line item. Fees calculated on 40 dollar subtotal. Stripe charge matches. Usage increments to 1.",
    [["Go to Event, Promotions, Create Promo Code. Set Code SAVE20, Discount 20 percent, Max Uses 5. Save.","Promo code SAVE20 is created."],
     ["Open public checkout, add a 50 dollar ticket, proceed to checkout. Enter SAVE20 and click Apply.","10 dollar discount line item appears. Fees recalculated on 40 dollar subtotal."],
-    ["Complete the purchase with the test card.","Payment succeeds. Stripe charge matches discounted total. Usage increments to 1."]]],
+    ["Complete the purchase with the test card.","Payment succeeds. Stripe charge matches discounted total."],
+    ["Go to Event, Promotions and find the SAVE20 code. Check the usage count.","Usage count shows 1 of 5. The counter incremented correctly after the purchase."]]],
   [1012,"TC-012 Promo code max-use limit enforced","Checkout and Payments","Critical","Bob",true,
    "A promo code exists with Max Uses 2.",
    "3rd application rejected with clear error. Usage shows 2 of 2. No discount applied on 3rd attempt.",
@@ -125,7 +126,7 @@ const RAW_CASES = [
    "Stripe refund includes the 1.70 dollar tax. Accounting Sales Tax to Remit decreases by 1.70 dollars.",
    [["Go to Attendee Detail for the tax-enabled purchase. Click Refund, Full Refund, Confirm.","Refund is initiated."],
     ["Check the Stripe test dashboard.","Refund includes the full amount including 1.70 dollar tax."],
-    ["Go to the Accounting page and expand the Sales Tax to Remit section.","Collected vs refunded breakdown shows correctly."]]],
+    ["Go to the Accounting page and expand the Sales Tax to Remit section.","Breakdown shows 1.70 dollars collected and 1.70 dollars refunded, resulting in 0.00 dollars net tax to remit."]]],
   [1019,"TC-019 All-In Pricing event-level override wins over org default","Checkout and Payments","Critical","Bob",true,
    "Logged in as Org Admin. Two events exist under the same org.",
    "Event with override OFF shows base price plus separate fees. Other org events still show all-in pricing.",
@@ -175,7 +176,8 @@ const RAW_CASES = [
    [["Scan any valid ticket in the Entry Scan tab. Wait for the result screen.","Result screen appears."],
     ["Tap the Exit Scan tab.","App switches to Exit Scan immediately. No delay or freeze."],
     ["Tap back to Entry Scan.","App switches back immediately. Camera reactivates and is ready to scan."],
-    ["Use the venue dropdown to change to a different venue.","Dropdown responds immediately. Venue updates correctly."]]],
+    ["Use the venue dropdown to change to a different venue.","Dropdown responds immediately. Venue updates correctly."]],
+   [["Jira","https://jira.company.com/browse/TIX-1173"]]],
   [1027,"TC-027 Access codes auto-created when venue added","Snap Entry","High","Alice",false,
    "An existing event is open in the admin dashboard. Snap Entry installed on a test device. Covers a February 2026 regression fix.",
    "After adding a new venue via the web it appears in Snap Entry venue dropdown. Access code auto-available. Scanning works without manual setup.",
@@ -199,7 +201,8 @@ const RAW_CASES = [
    "All 31 scans recorded and sync correctly. Nothing lost after the 25th scan. Web Attendees shows all 31 check-ins.",
    [["Enable Airplane Mode. Scan all 31 valid ticket QR codes in Snap Entry.","All 31 scans recorded locally. Pending counter shows 31."],
     ["Turn off Airplane Mode and wait for sync to complete.","Sync completes. No errors appear in the app."],
-    ["On a computer check the event Attendees page and count the check-ins.","All 31 scans appear including 26th through 31st. No scans missing or duplicated."]]],
+    ["On a computer check the event Attendees page and count the check-ins.","All 31 scans appear including 26th through 31st. No scans missing or duplicated."]],
+   [["Jira","https://jira.company.com/browse/TIX-1035"]]],
   [1031,"TC-031 Tap-to-Pay disabled offline","Snap Entry","Critical","Bob",true,
    "Snap Entry open on a compatible iPhone XS or newer running iOS 16.4 or later. Airplane mode can be toggled.",
    "When offline Tap-to-Pay is disabled or hidden. Clear message explains unavailability. Cash payment option remains available.",
@@ -293,7 +296,8 @@ const RAW_CASES = [
    "Gross Revenue column shows full sale amounts before deductions. Correctly labeled Gross Revenue not Net Revenue.",
    [["Navigate to the Accounting page for any event with completed sales.","Accounting page loads with the transactions table."],
     ["Look at the column headers. Find the Gross Revenue column.","Column is labeled Gross Revenue not Net Revenue. Values show the full sale amount before fees or refunds."],
-    ["Find the Net Revenue column.","A separate Net Revenue column exists with lower values. Both columns clearly labeled and showing different values."]]],
+    ["Find the Net Revenue column.","A separate Net Revenue column exists with lower values. Both columns clearly labeled and showing different values."]],
+   [["Jira","https://jira.company.com/browse/TIX-1292"]]],
   [1046,"TC-046 Event Dashboard tabs load correctly","Accounting and Reporting","Critical","Bob",true,
    "An event with completed sales and check-ins exists. Covers a February 2026 dashboard restructure.",
    "All 3 sub-tabs load without errors. Full ticket names shown. Columns align correctly. Fee breakdown tooltips render correctly.",
@@ -343,7 +347,7 @@ const RAW_CASES = [
     ["Try to access an event not assigned to this gatekeeper.","Access is blocked. No unassigned events can be viewed."],
     ["Look for any links to org settings, billing, or full attendee data.","No such options are accessible. View is restricted to scan functionality only."]]],
   [1053,"TC-053 Non-admin redirected before admin hub loads","Authentication","Critical","Bob",true,
-   "You have login credentials for a standard org member (not an admin). You know the internal admin hub URL.",
+   "You have login credentials for a standard org member (not an admin). You know the internal admin hub URL (typically at /admin or /hub path on the platform domain).",
    "User is redirected before any admin content is displayed. No partial admin data visible. User lands on org dashboard or a 403 page.",
    [["Log in using the standard org member credentials.","Logged in and on the normal user dashboard."],
     ["In the browser address bar manually type the admin hub URL and press Enter.","Page immediately redirects. No admin content ever visible during the redirect."],
@@ -353,7 +357,8 @@ const RAW_CASES = [
    "Org Accounting page loads successfully with org-level revenue data. No 500 error. Only org own data visible.",
    [["Log in using Org Admin credentials (the admin of your specific organization).","Logged in to the org admin dashboard."],
     ["Navigate to Org then Accounting.","Org Accounting page loads successfully. Revenue data displayed. No 500 error."],
-    ["Review the data shown.","Only your organization data shown. No data from other organizations visible."]]],
+    ["Review the data shown.","Only your organization data shown. No data from other organizations visible."]],
+   [["Jira","https://jira.company.com/browse/TIX-1191"]]],
   [1055,"TC-055 New org member can invite staff in same session","Authentication","High","Alice",false,
    "A new org member invitation email has been sent. You will accept it and complete onboarding. Covers a regression fix.",
    "After completing onboarding the new member can immediately invite additional staff. Invitation sent successfully. Invited staff receives the email.",
@@ -366,62 +371,70 @@ const RAW_CASES = [
    "If payment fails, no admission_ticket or face_search_request record is created. The biometric_collection is not corrupted. The user can retry checkout and complete it successfully.",
    [["Add a biometric-enabled ticket to cart and proceed through checkout to the payment step. Enter contact info and name as required.","Checkout form loads correctly. Biometric warning card is shown. Contact fields are visible and required."],
     ["Enter a card number that will trigger a payment decline (e.g. test card 4000000000000002). Submit payment.","Payment is declined. An error message is shown to the user. Checkout does not advance."],
-    ["Query the database: check fb_eet.admission_tickets for a new record tied to this transaction, and fb_biometrics.face_search_requests for any new row.","No admission_ticket row is created. No face_search_request row is created. biometric_collection row is unchanged."],
-    ["Re-enter a valid card number and submit payment.","Payment succeeds. Order is created. admission_ticket is created with biometric_image_id populated. Confirmation page loads."],
-    ["Query fb_biometrics.face_search_requests and fb_eet.admission_ticket_scans for the new order.","Exactly one face_search_request exists for this order. No duplicate or orphaned records from the failed attempt."]]],
+    ["In the admin dashboard go to the Attendees page for the event. Look for a new attendee record tied to this failed transaction.","No new attendee record appears in the Attendees list. The order is not created. The biometric collection for the event is unchanged."],
+    ["Re-enter a valid card number and submit payment.","Payment succeeds. Order is created. Confirmation page loads."],
+    ["Go to the Attendees page and confirm exactly one new attendee record exists. Refresh the page to verify no duplicates appear.","Exactly one order and one attendee record exist for this purchase. No duplicate entries from the failed payment attempt."]],
+   [["Jira","https://jira.company.com/browse/TEAM-000"]]],
   [1058,"TC-058 Biometric event — forced metadata required before payment","Checkout and Payments","Critical","Alice",true,
    "Event has biometrics enabled and at least one metadata field has is_forced = true (e.g. First Name, Last Name). User is logged in and has a ticket in cart. fb_eet.event_metadata_fields records exist for this event.",
    "User cannot reach the payment step without completing all forced metadata fields. Attempting to skip them is blocked server-side, not just client-side.",
    [["Proceed to checkout. When the contact/metadata form is shown, leave all is_forced fields blank and attempt to continue.","Form submission is blocked. Validation errors are shown for each required field. User cannot proceed to payment."],
-    ["Using browser dev tools, disable client-side validation and force-submit the form with empty forced fields via a direct POST request to the checkout endpoint.","Server returns a 400 or 422 error. Order is not created. Response body identifies the missing required fields."],
+    ["Using browser dev tools Network tab, observe the form submission request. Confirm the server also rejects empty forced fields by checking the Attendees page for any new record.","Server rejects the submission. No new order or attendee record is created. Network response shows an error status (4xx)."],
     ["Fill in all forced metadata fields with valid values (First Name, Last Name, DOB) and submit the form normally.","Form validation passes. User advances to the payment step."],
-    ["Complete payment with a valid card.","Order is created. fb_eet.admission_ticket_scans record contains the submitted metadata. show_at_checkout fields are populated correctly."]]],
+    ["Complete payment with a valid card.","Order is created successfully. Confirmation page and email received. Attendee Detail in the admin dashboard shows the submitted metadata values."]],
+   [["Jira","https://jira.company.com/browse/TEAM-000"]]],
   [1059,"TC-059 Forced metadata fields read-only in Order Management post-purchase","Checkout and Payments","Critical","Bob",true,
    "A completed order exists for a biometric event. The event has at least one metadata field with is_forced = true and is_deleted = false. User has Order Management (OM) access.",
    "Forced metadata fields are read-only in OM for standard orders. They may only be editable for transfer flows if that is the intended design decision.",
    [["Open the completed order in Order Management. Navigate to the attendee metadata section.","Forced metadata fields (e.g. First Name, Last Name) are visible."],
-    ["Attempt to edit a forced metadata field value in OM and save.","Edit is blocked or a warning is shown. If editing is allowed, confirm this is intentional per product spec."],
-    ["Initiate a ticket transfer for the same order. Open the transfer form and check if forced metadata fields are editable.","Forced fields should be editable during transfer (new attendee = new identity). Confirm this matches the intended behaviour."],
-    ["Complete the transfer with updated metadata. Query fb_eet.event_metadata_fields and the admission_ticket record.","Transfer creates a new admission_ticket with updated metadata. Original ticket is voided. biometric_image_id is reset or cleared for re-upload."]]],
+    ["Attempt to edit a forced metadata field value in OM and save.","Edit action is blocked and a warning or error message is shown. The field value is not changed."],
+    ["Initiate a ticket transfer for the same order. Open the transfer form and check if forced metadata fields are editable.","Forced fields are editable in the transfer form, allowing the new attendee to provide their own identity details."],
+    ["Complete the transfer with updated metadata.","Transfer completes. New attendee receives a ticket confirmation email. Attendee Detail shows the updated metadata. The original ticket is marked as transferred or voided."]],
+   [["Jira","https://jira.company.com/browse/TEAM-000"]]],
   [1060,"TC-060 Check-in blocked when no ID uploaded — upload link dispatched","Checkout and Payments","Critical","Charlie",true,
    "Event has is_biometric_required = true. An admission_ticket exists where biometric_image_id is NULL (attendee never uploaded their ID). Attendee arrives at the gate and scans their QR code in SnapEntry.",
    "Attendee is blocked from check-in. System automatically sends an upload link via email/SMS. Staff sees a clear error state in SnapEntry.",
-   [["Scan the attendee QR code in SnapEntry.","SnapEntry performs the logic check: is_biometric_required = true. System detects biometric_image_id is NULL on the admission_ticket."],
-    ["Observe the SnapEntry UI response after the QR scan.","A red/failure state is shown. Message indicates the ticket required ID upload but no ID was uploaded. Check-in is not granted."],
-    ["Confirm whether the upload link is automatically dispatched or requires staff action. Check the attendee email and SMS for the upload link.","Upload link is sent automatically (or staff can trigger it). Link arrives within 60 seconds. Link is unique and tied to this specific admission_ticket."],
-    ["Attempt to manually check in the attendee from SnapEntry without the ID being uploaded.","Manual check-in is not possible without a staff override. System does not create an fb_eet.admission_ticket_scans record for a successful check-in."],
-    ["Attendee uses the upload link to upload a valid ID photo. Return to SnapEntry and re-scan the QR code.","Rekognition indexes the new face. Face search runs against the collection. On match, SnapEntry shows the green-light state and check-in succeeds."]]],
+   [["Scan the attendee QR code in SnapEntry.","SnapEntry detects that the ticket requires a biometric ID upload but none has been submitted. A red or failure state is shown immediately."],
+    ["Observe the SnapEntry UI response after the QR scan.","A red or failure state is shown. Message indicates the ticket required ID upload but no ID was uploaded. Check-in is not granted."],
+    ["Confirm whether the upload link is automatically dispatched or requires staff action. Check the attendee email and SMS for the upload link.","Upload link is sent automatically or can be triggered by staff. Link arrives within 60 seconds. Link is unique to this specific ticket."],
+    ["Attempt to manually check in the attendee from SnapEntry without the ID being uploaded.","Manual check-in without the ID upload is not permitted. No successful check-in record is created."],
+    ["Attendee uses the upload link to upload a valid ID photo. Return to SnapEntry and re-scan the QR code.","ID upload is processed. On match, SnapEntry shows the green success state and check-in succeeds."]],
+   [["Jira","https://jira.company.com/browse/TEAM-000"]]],
   [1061,"TC-061 Face scan no_match — staff override allowed and logged","Checkout and Payments","Critical","Charlie",true,
    "Event has biometrics enabled. Attendee has a valid ticket with a biometric_image_id populated. Attendee is physically present at the gate. SnapEntry is in biometric check-in mode.",
    "On a no_match result, SnapEntry shows the indexed photo for staff comparison and allows a manual check-in decision. The override action is recorded in fb_eet.admission_ticket_scans.",
-   [["Scan the attendee face using the SnapEntry camera.","SnapEntry sends the image to Rekognition via searchFacesBy. A face_search_request record is created in fb_biometrics.face_search_requests."],
-    ["Simulate or trigger a no_match response (e.g. use a different person face or a low-quality image below the confidence threshold).","face_search_results record is created with status = no_match. SnapEntry does not auto-approve. The attendee indexed photo is displayed to staff."],
-    ["Staff visually compares the displayed photo to the attendee and clicks the manual check-in button.","Check-in is recorded. fb_eet.admission_ticket_scans row is created with scan_action indicating manual override. scan_type reflects the biometric check-in path."],
-    ["Attempt to check in the same ticket a second time (replay attack or double entry).","SnapEntry detects the ticket has already been scanned. Entry is denied. No duplicate admission_ticket_scans record is created."]]],
+   [["Scan the attendee face using the SnapEntry camera.","SnapEntry initiates face recognition. A face search request is sent for this ticket."],
+    ["Have someone other than the ticket holder present their face to the SnapEntry camera, or use a blurry or partially obscured image to trigger a low-confidence result.","SnapEntry does not auto-approve. A no-match result screen is shown. The photo on file for the ticket holder is displayed to staff for visual comparison."],
+    ["Staff visually compares the displayed photo to the attendee and clicks the manual check-in or override button.","Manual check-in succeeds. SnapEntry shows a success or override-confirmed state. The check-in is recorded and visible on the Attendees page in the admin dashboard."],
+    ["Attempt to check in the same ticket a second time (replay attack or double entry).","SnapEntry detects the ticket has already been scanned. Entry is denied. No duplicate check-in record is created."]],
+   [["Jira","https://jira.company.com/browse/TEAM-000"]]],
   [1062,"TC-062 Concurrent first purchases do not duplicate biometric collection","Checkout and Payments","Critical","Dana",true,
    "Event has biometrics enabled. No biometric_collections record exists yet for this event_id. Two users purchase tickets for the same event concurrently or in quick succession.",
    "Exactly one fb_biometrics.biometric_collections record exists per event. Concurrent first purchases do not create duplicate collections. All subsequent tickets are indexed into the same collection.",
-   [["Trigger two simultaneous first-ticket purchases for a biometric event (simulate via two browser sessions or API calls fired within the same second).","The server calls createCollection. Only one biometric_collections record is created for this event_id. Race condition is handled — no duplicate collection_ids."],
-    ["Query fb_biometrics.biometric_collections WHERE event_id = the target event. Count the rows.","Exactly 1 row exists. rekognition_collection_id and collection_name are populated. Both admission_tickets reference the same biometric_collection_id."],
-    ["Purchase a third ticket for the same event independently.","No new collection is created. The new index_face_request references the existing biometric_collection_id. Face is indexed into the existing Rekognition collection."],
-    ["Verify in AWS Rekognition (or via indexFacesFrom response) that all three faces are indexed under the same collection_id.","All three face records exist in the same Rekognition collection. face_records rows all reference the same biometric_collection_id via index_face_request_id."]]],
+   [["Open two separate browser sessions (e.g. Chrome and Firefox) and begin checkout for the same biometric event simultaneously. Complete both purchases as close together as possible.","Both purchases complete. Confirmation pages and emails received for both buyers."],
+    ["Go to the admin dashboard event settings or biometric configuration page for the target event.","The event shows exactly one biometric collection configured. No error state or duplicate collection warning is visible."],
+    ["Purchase a third ticket for the same event independently.","Third purchase completes successfully. Confirmation email received. No errors during checkout."],
+    ["Have all three ticket holders attempt check-in via SnapEntry biometric scan at the event.","All three attendees check in successfully using face recognition. No errors or collection mismatch messages appear. All check-ins appear on the Attendees page."]],
+   [["Jira","https://jira.company.com/browse/TEAM-000"]]],
 ];
 
-const REGRESSION_CASES = RAW_CASES.map(([id,title,suite,priority,assignee,markAsCritical,preconditions,expectedResult,rawSteps]) => ({
+const REGRESSION_CASES = RAW_CASES.map(([id,title,suite,priority,assignee,markAsCritical,preconditions,expectedResult,rawSteps,rawLinks=[]]) => ({
   id, title, suite, priority, assignee, markAsCritical, status:"draft",
   preconditions, expectedResult,
   steps: rawSteps.map(([action,expected]) => ({action,expected})),
-  links:[],
+  links: rawLinks.map(([type,url]) => ({type,url})),
 }));
 
 const TEAMS_DEFAULT = {
-  Ticketing:{ color:"#3b82f6", suites:["Ticket Management","Checkout and Payments","Snap Entry","Season Passes","Accounting and Reporting","Authentication"], cases:REGRESSION_CASES },
+  Ticketing:{ color:"#3b82f6", suites:["Ticket Management","Checkout and Payments","Snap Entry","Season Passes","Accounting and Reporting","Authentication"], cases:[] },
   Travel:{ color:"#22c55e", suites:["Search","Booking","Payments","Cancellation"], cases:[] },
   Compete:{ color:"#a855f7", suites:["Onboarding","Leaderboard","Scoring","Reporting"], cases:[] },
 };
 
-const STORAGE_KEY = "qa-hub-shared-data";
-const RUNS_KEY    = "qa-hub-runs";
+const STORAGE_KEY  = "qa-hub-shared-data";
+const RUNS_KEY     = "qa-hub-runs";
+const VERSION_KEY  = "qa-hub-data-version";
+const DATA_VERSION = "2";
 
 function normalizeCase(c){
   if(!c||typeof c!=="object")return c;
@@ -1088,20 +1101,28 @@ export default function QAHub(){
 
   useEffect(()=>{
     (async()=>{
-      const fresh=JSON.parse(JSON.stringify(TEAMS_DEFAULT));
+      let fresh=JSON.parse(JSON.stringify(TEAMS_DEFAULT));
       try{
-        const r=await storageAPI.get(STORAGE_KEY);
-        if(r?.value){
-          const sv=JSON.parse(r.value);
-          // Fully trust storage for all teams — never overwrite with hardcoded defaults
-          Object.keys(sv).forEach(k=>{
-            if(sv[k]&&typeof sv[k]==="object"&&Array.isArray(sv[k].cases)){
-              fresh[k]=sv[k];
+        const vr=await storageAPI.get(VERSION_KEY);
+        if(!vr?.value||vr.value!==DATA_VERSION){
+          // First deploy after version bump — write fixed cases to Firebase
+          fresh={...fresh,Ticketing:{...fresh.Ticketing,cases:REGRESSION_CASES}};
+          try{
+            const prev=await storageAPI.get(STORAGE_KEY);
+            if(prev?.value){
+              const sv=JSON.parse(prev.value);
+              // Preserve Travel and Compete data from previous storage
+              Object.keys(sv).forEach(k=>{if(k!=="Ticketing"&&sv[k]?.cases)fresh[k]=sv[k];});
             }
-          });
+          }catch{}
+          await storageAPI.set(STORAGE_KEY,JSON.stringify(fresh));
+          await storageAPI.set(VERSION_KEY,DATA_VERSION);
+        }else{
+          // Version matches — read Firebase as source of truth
+          const r=await storageAPI.get(STORAGE_KEY);
+          if(r?.value)fresh=JSON.parse(r.value);
         }
-      }catch{/* initial load optional */}
-      try{await storageAPI.set(STORAGE_KEY,JSON.stringify(fresh));}catch{/* seed optional */}
+      }catch{}
       skipSave.current=false;
       setTeams(normalizeTeams(fresh));
       setStorageReady(true);
