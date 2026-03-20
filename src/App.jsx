@@ -467,6 +467,13 @@ const LINK_TYPES  = ["Jira","Docs","GitHub","Other"];
 const NAV         = ["Home","Test cases","Test runs","Critical issues","Automation"];
 const NAV_ICONS   = ["⌂","📋","▶️","🚨","⚙"];
 
+// ── HASH ROUTING ──────────────────────────────────────────────────────────────
+const _ns={'Home':'home','Test cases':'cases','Test runs':'runs','Critical issues':'critical','Automation':'automation'};
+const _sn=Object.fromEntries(Object.entries(_ns).map(([k,v])=>[v,k]));
+const _sl=s=>s.toLowerCase().replace(/[\s/]+/g,'-');
+function buildHash(team,nav,suite){if(nav==='Home')return '#home';const t=_sl(team);if(suite)return `#${t}/suite/${encodeURIComponent(suite)}`;return `#${t}/${_ns[nav]||'cases'}`;}
+function readHash(h){const s=(h||'').replace(/^#/,'');if(!s||s==='home')return{team:'Ticketing',nav:'Home',suite:null};const[ts,ns,...r]=s.split('/');const team=Object.keys(TEAMS_DEFAULT).find(k=>_sl(k)===ts)||'Ticketing';if(ns==='suite')return{team,nav:'Test cases',suite:decodeURIComponent(r.join('/'))};return{team,nav:_sn[ns]||'Test cases',suite:null};}
+
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 const pc  = p => ({Low:"#6b7280",Medium:"#f59e0b",High:"#f97316",Critical:"#ef4444"}[p]||"#6b7280");
 const sb  = s => ({draft:{bg:"#374151",text:"#9ca3af",label:"Draft"},active:{bg:"#1e3a5f",text:"#60a5fa",label:"Active"},passed:{bg:"#14532d",text:"#4ade80",label:"Passed"},failed:{bg:"#450a0a",text:"#f87171",label:"Failed"}}[s]||{bg:"#374151",text:"#9ca3af",label:s});
@@ -1059,13 +1066,14 @@ export default function QAHub(){
   const skipRunSave=useRef(true);
   const skipRunRemoteToastRef=useRef(true);
   const runsRemoteFirstSnapshotRef=useRef(true);
+  const skipHashRef=useRef(false);
 
   const [teams,setTeams]=useState(null);
   const [runs,setRuns]=useState({Ticketing:[],Travel:[],Compete:[]});
   const [storageReady,setStorageReady]=useState(false);
-  const [activeTeam,setActiveTeam]=useState("Ticketing");
-  const [activeNav,setActiveNav]=useState("Home");
-  const [activeSuite,setActiveSuite]=useState(null);
+  const [activeTeam,setActiveTeam]=useState(()=>readHash(window.location.hash).team);
+  const [activeNav,setActiveNav]=useState(()=>readHash(window.location.hash).nav);
+  const [activeSuite,setActiveSuite]=useState(()=>readHash(window.location.hash).suite);
   const [modal,setModal]=useState(null);
   const [csvData,setCsvData]=useState(null);
   const [activeRun,setActiveRun]=useState(null);
@@ -1156,6 +1164,17 @@ export default function QAHub(){
     (async()=>{try{await storageAPI.set(RUNS_KEY,JSON.stringify(runs));}catch{/* save optional */}})();
   },[runs]);
 
+  useEffect(()=>{
+    const onHash=()=>{
+      if(skipHashRef.current){skipHashRef.current=false;return;}
+      const{team,nav,suite}=readHash(window.location.hash);
+      setActiveTeam(team);setActiveNav(nav);setActiveSuite(suite);
+      setActiveRun(null);setPreviewCase(null);
+    };
+    window.addEventListener('hashchange',onHash);
+    return()=>window.removeEventListener('hashchange',onHash);
+  },[]);
+
   if(!teams)return(
     <div style={{height:"100vh",background:"#111827",display:"flex",alignItems:"center",justifyContent:"center",color:"#9ca3af",fontFamily:"sans-serif",flexDirection:"column",gap:12}}>
       <div style={{width:36,height:36,border:"3px solid #374151",borderTop:"3px solid #3b82f6",borderRadius:"50%",animation:"spin .8s linear infinite"}}/>
@@ -1183,10 +1202,11 @@ export default function QAHub(){
   const handleStepStatusChange=(caseId,newStatuses)=>{updTeam(activeTeam,cs=>cs.map(c=>c.id===caseId?{...c,stepStatuses:newStatuses}:c));setPreviewCase(prev=>prev?.id===caseId?{...prev,stepStatuses:newStatuses}:prev);};
   const delCase=id=>{updTeam(activeTeam,cs=>cs.filter(c=>c.id!==id));if(previewCase?.id===id)setPreviewCase(null);showToast("Deleted");};
   const cycleSt=id=>{const cy={draft:"active",active:"passed",passed:"failed",failed:"draft"};updTeam(activeTeam,cs=>cs.map(c=>c.id===id?{...c,status:cy[c.status]}:c));};
-  const saveRun=run=>{setRuns(r=>({...r,[activeTeam]:[...(r[activeTeam]||[]),run]}));setModal(null);setActiveRun(run);setActiveNav("Test runs");showToast("Run started");};
+  const push=(team,nav,suite=null)=>{skipHashRef.current=true;window.location.hash=buildHash(team,nav,suite);};
+  const saveRun=run=>{setRuns(r=>({...r,[activeTeam]:[...(r[activeTeam]||[]),run]}));setModal(null);setActiveRun(run);push(activeTeam,'Test runs');setActiveNav("Test runs");showToast("Run started");};
   const updRun=u=>{setRuns(r=>({...r,[activeTeam]:(r[activeTeam]||[]).map(x=>x.id===u.id?u:x)}));setActiveRun(u);};
   const delRun=id=>{setRuns(r=>({...r,[activeTeam]:(r[activeTeam]||[]).filter(x=>x.id!==id)}));if(activeRun?.id===id)setActiveRun(null);};
-  const goTeam=name=>{setActiveTeam(name);setActiveSuite(null);setActiveNav("Test cases");setSearch("");setFilterPri("All");setActiveRun(null);setPreviewCase(null);};
+  const goTeam=name=>{push(name,'Test cases');setActiveTeam(name);setActiveSuite(null);setActiveNav("Test cases");setSearch("");setFilterPri("All");setActiveRun(null);setPreviewCase(null);};
   const resetAll=async()=>{if(!window.confirm("Reset all shared data?"))return;try{await storageAPI.delete(STORAGE_KEY);await storageAPI.delete(RUNS_KEY);setTeams(JSON.parse(JSON.stringify(TEAMS_DEFAULT)));setRuns({Ticketing:[],Travel:[],Compete:[]});showToast("Data reset");}catch{showToast("Failed","error");}};
 
   const exportCSV=()=>{
@@ -1219,7 +1239,7 @@ export default function QAHub(){
           <div style={{padding:"10px 8px",overflowY:"auto",flex:1}}>
             <div style={{fontSize:10,fontWeight:600,color:"#6b7280",letterSpacing:".08em",marginBottom:6,paddingLeft:4}}>PROJECT</div>
             {NAV.map((n,i)=>(
-              <button key={n} onClick={()=>{setActiveNav(n);setActiveSuite(null);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:activeNav===n&&!activeSuite?"#374151":"none",border:"none",borderRadius:6,padding:"7px 10px",color:activeNav===n&&!activeSuite?"#f9fafb":"#9ca3af",fontSize:13,cursor:"pointer",textAlign:"left",marginBottom:2}}>
+              <button key={n} onClick={()=>{push(activeTeam,n,null);setActiveNav(n);setActiveSuite(null);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:activeNav===n&&!activeSuite?"#374151":"none",border:"none",borderRadius:6,padding:"7px 10px",color:activeNav===n&&!activeSuite?"#f9fafb":"#9ca3af",fontSize:13,cursor:"pointer",textAlign:"left",marginBottom:2}}>
                 <span style={{fontSize:14}}>{NAV_ICONS[i]}</span>{n}
                 {n==="Test runs"&&teamRuns.length>0&&<span style={{marginLeft:"auto",fontSize:10,background:"#374151",color:"#9ca3af",borderRadius:10,padding:"1px 6px"}}>{teamRuns.length}</span>}
               </button>
@@ -1231,7 +1251,7 @@ export default function QAHub(){
             </div>
             {(team.suites||[]).length===0&&<button onClick={()=>setModal("suites")} style={{background:"none",border:"1px dashed #374151",borderRadius:6,color:"#4b5563",fontSize:12,padding:"6px 10px",cursor:"pointer",width:"100%",textAlign:"left"}}>+ Add a suite</button>}
             {(team.suites||[]).map(s=>(
-              <button key={s} onClick={()=>{setActiveSuite(activeSuite===s?null:s);setActiveNav("Test cases");}} style={{display:"block",width:"100%",background:activeSuite===s?"#374151":"none",border:"none",borderRadius:6,padding:"7px 10px",color:activeSuite===s?"#f9fafb":"#9ca3af",fontSize:13,cursor:"pointer",textAlign:"left",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s}</button>
+              <button key={s} onClick={()=>{const ns=activeSuite===s?null:s;push(activeTeam,'Test cases',ns);setActiveSuite(ns);setActiveNav("Test cases");}} style={{display:"block",width:"100%",background:activeSuite===s?"#374151":"none",border:"none",borderRadius:6,padding:"7px 10px",color:activeSuite===s?"#f9fafb":"#9ca3af",fontSize:13,cursor:"pointer",textAlign:"left",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s}</button>
             ))}
           </div>
         )}
@@ -1256,7 +1276,7 @@ export default function QAHub(){
           <>
             <div style={{background:"#1f2937",borderBottom:"1px solid #374151",padding:"14px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
               <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <button onClick={()=>setActiveNav("Home")} style={{background:"none",border:"none",color:"#6b7280",fontSize:18,cursor:"pointer",padding:0,lineHeight:1}}>⌂</button>
+                <button onClick={()=>{push(activeTeam,'Home');setActiveNav("Home");}} style={{background:"none",border:"none",color:"#6b7280",fontSize:18,cursor:"pointer",padding:0,lineHeight:1}}>⌂</button>
                 <span style={{color:"#374151"}}>›</span>
                 <span style={{width:32,height:32,borderRadius:8,background:team.color+"22",border:`1.5px solid ${team.color}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:team.color}}>{activeTeam[0]}</span>
                 <div>
