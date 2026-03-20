@@ -1593,6 +1593,8 @@ export default function QAHub(){
   const csvImportRef=useRef(null);
   const [activeRun,setActiveRun]=useState(null);
   const [previewCase,setPreviewCase]=useState(null);
+  const [detailWidth,setDetailWidth]=useState(500);
+  const detailDragRef=useRef(null);
   const [filterPri,setFilterPri]=useState("All");
   const [search,setSearch]=useState("");
   const [collapsed,setCollapsed]=useState(false);
@@ -1885,9 +1887,38 @@ export default function QAHub(){
                     })}
                   </div>
                   {previewCase&&(
-                    <div style={{width:500,flexShrink:0,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-                      <CaseDetail key={previewCase.id} c={previewCase} onClose={()=>setPreviewCase(null)} onEdit={()=>{setModal({edit:previewCase});setPreviewCase(null);}} onStepStatusChange={handleStepStatusChange}/>
-                    </div>
+                    <>
+                      <div
+                        style={{width:6,flexShrink:0,cursor:"col-resize",background:"transparent",position:"relative",zIndex:10}}
+                        onMouseDown={e=>{
+                          e.preventDefault();
+                          const startX=e.clientX;
+                          const startW=detailWidth;
+                          const onMove=mv=>{
+                            const delta=startX-mv.clientX;
+                            setDetailWidth(Math.max(320,Math.min(900,startW+delta)));
+                          };
+                          const onUp=()=>{
+                            window.removeEventListener("mousemove",onMove);
+                            window.removeEventListener("mouseup",onUp);
+                            document.body.style.cursor="";
+                            document.body.style.userSelect="";
+                          };
+                          document.body.style.cursor="col-resize";
+                          document.body.style.userSelect="none";
+                          window.addEventListener("mousemove",onMove);
+                          window.addEventListener("mouseup",onUp);
+                        }}
+                      >
+                        <div style={{position:"absolute",top:0,bottom:0,left:2,width:2,background:"#374151",transition:"background 0.15s"}}
+                          onMouseEnter={e=>e.currentTarget.style.background="#6b7280"}
+                          onMouseLeave={e=>e.currentTarget.style.background="#374151"}
+                        />
+                      </div>
+                      <div style={{width:detailWidth,flexShrink:0,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+                        <CaseDetail key={previewCase.id} c={previewCase} onClose={()=>setPreviewCase(null)} onEdit={()=>{setModal({edit:previewCase});setPreviewCase(null);}} onStepStatusChange={handleStepStatusChange}/>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
