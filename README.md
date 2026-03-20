@@ -19,6 +19,11 @@ Production builds set `base: '/QA-Hub_TCMS/'` in `vite.config.js` so assets load
 
 **Live site:** [https://dmytroqaengineer.github.io/QA-Hub_TCMS/](https://dmytroqaengineer.github.io/QA-Hub_TCMS/)
 
+**Pages settings:** Repository → **Settings** → **Pages** → **Build and deployment** → set source to **Deploy from a branch**, branch **`gh-pages`**, folder **`/ (root)`**.  
+If the source is **`main`** and **`/`**, GitHub serves the **source** `index.html`, which still points at `/src/main.jsx` — that file is never built for the web, so you get a blank page and **404** (often shown as `main.js` or `main.jsx` in DevTools).
+
+After fixing the source, run the **Deploy to GitHub Pages** workflow (or push to `main`) and wait a minute for the site to update.
+
 ## Stack
 
 - [Vite](https://vite.dev/) + [React 19](https://react.dev/)
