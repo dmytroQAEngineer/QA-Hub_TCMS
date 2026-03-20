@@ -25,6 +25,21 @@ If the source is **`main`** and **`/`**, GitHub serves the **source** `index.htm
 
 After fixing the source, run the **Deploy to GitHub Pages** workflow (or push to `main`) and wait a minute for the site to update.
 
+### Blank page but Pages points at `gh-pages`
+
+If **View Page Source** still shows `<script … src="/src/main.jsx">`, the `gh-pages` branch holds the **wrong tree** (repo root), not `npm run build` output.
+
+1. **Remove the other workflow**  
+   In **Actions**, open **Deploy static content to Pages** (or any workflow that uploads `.` / the whole repo). Either delete `.github/workflows/static.yml` (or similar) on the default branch, or disable the workflow. That job republishes unbuilt files and matches the “deployed by Deploy static content to Pages” line in Settings.
+
+2. **Republish only `dist`**  
+   Push these workflow changes, then either push to `main` or run **Actions → Deploy to GitHub Pages → Run workflow**. This repo uses [peaceiris/actions-gh-pages](https://github.com/peaceiris/actions-gh-pages) with `publish_dir: ./dist` and `force_orphan: true` so `gh-pages` contains only the Vite build.
+
+3. **Sanity-check on GitHub**  
+   On the **`gh-pages`** branch, open `index.html`. It must contain `/QA-Hub_TCMS/assets/…` (hashed JS/CSS), not `/src/main.jsx`.
+
+**Local fallback:** `npm run build && npm run deploy` (requires SSH access to the remote in `package.json`).
+
 ## Stack
 
 - [Vite](https://vite.dev/) + [React 19](https://react.dev/)

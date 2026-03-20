@@ -3,6 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main, prod]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,7 +19,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Verify production index (must reference /QA-Hub_TCMS/assets/, not /src/)
+        run: |
+          grep -q '/QA-Hub_TCMS/assets/' dist/index.html || (echo 'Build output missing base path; check vite.config.js base' && exit 1)
+          ! grep -q '/src/main.jsx' dist/index.html || (echo 'dist/index.html still looks like dev template' && exit 1)
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
           publish_dir: ./dist
+          force_orphan: true
