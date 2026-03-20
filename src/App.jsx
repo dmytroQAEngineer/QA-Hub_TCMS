@@ -1039,6 +1039,7 @@ export default function QAHub(){
             skipRunRemoteToastRef.current=false;
             return rem;
           }
+          /* Duplicate RTDB snapshots: do not clear skipRunRemoteToastRef here — that consumed the guard with no toast skipped. */
           if(equal)return prev;
           if(skipRunRemoteToastRef.current){
             skipRunRemoteToastRef.current=false;
