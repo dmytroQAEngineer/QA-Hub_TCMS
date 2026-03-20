@@ -378,6 +378,45 @@ const TEAMS_DEFAULT = {
 
 const STORAGE_KEY = "qa-hub-shared-data";
 const RUNS_KEY    = "qa-hub-runs";
+
+function normalizeCase(c){
+  if(!c||typeof c!=="object")return c;
+  return {
+    ...c,
+    steps:Array.isArray(c.steps)?c.steps:[],
+    links:Array.isArray(c.links)?c.links:[],
+    stepStatuses:Array.isArray(c.stepStatuses)?c.stepStatuses:[],
+  };
+}
+function normalizeTeam(t){
+  if(!t||typeof t!=="object")return {color:"#6b7280",suites:[],cases:[]};
+  return {
+    ...t,
+    color:typeof t.color==="string"?t.color:"#6b7280",
+    suites:Array.isArray(t.suites)?t.suites:[],
+    cases:Array.isArray(t.cases)?t.cases.map(normalizeCase):[],
+  };
+}
+function normalizeTeams(data){
+  if(!data||typeof data!=="object")return JSON.parse(JSON.stringify(TEAMS_DEFAULT));
+  const out={};
+  for(const k of Object.keys(data))out[k]=normalizeTeam(data[k]);
+  return out;
+}
+function normalizeRuns(raw){
+  if(!raw||typeof raw!=="object")return {};
+  const out={};
+  for(const k of Object.keys(raw)){
+    const arr=raw[k];
+    if(!Array.isArray(arr)){out[k]=[];continue;}
+    out[k]=arr.map(r=>{
+      if(!r||typeof r!=="object")return r;
+      return {...r,caseIds:Array.isArray(r.caseIds)?r.caseIds:[],results:r.results&&typeof r.results==="object"?r.results:{}};
+    });
+  }
+  return out;
+}
+
 const PRIORITIES  = ["Low","Medium","High","Critical"];
 const ASSIGNEES   = ["Bob","Alice","Charlie","Dana"];
 const LINK_TYPES  = ["Jira","Docs","GitHub","Other"];
@@ -489,10 +528,11 @@ function CaseDetail({c,onClose,onEdit,onStepStatusChange}){
                 <div key={h} style={{padding:"6px 10px",fontSize:10,fontWeight:700,color:"#6b7280",borderLeft:i>0?"1px solid #374151":"none",textAlign:i===0||i===3?"center":"left"}}>{h}</div>
               ))}
             </div>
-            {c.steps.map((step,i)=>{
+            {(c.steps||[]).map((step,i)=>{
+              const stepsArr=c.steps||[];
               const ss=sst(stepSts[i]);
               return (
-                <div key={i} style={{display:"grid",gridTemplateColumns:"28px 1fr 1fr 100px",background:stepSts[i]==="untested"?"#1a2332":ss.bg+"33",border:"1px solid #374151",borderTop:"none",borderRadius:i===c.steps.length-1?"0 0 7px 7px":0}}>
+                <div key={i} style={{display:"grid",gridTemplateColumns:"28px 1fr 1fr 100px",background:stepSts[i]==="untested"?"#1a2332":ss.bg+"33",border:"1px solid #374151",borderTop:"none",borderRadius:i===stepsArr.length-1?"0 0 7px 7px":0}}>
                   <div style={{padding:"11px 8px",display:"flex",alignItems:"flex-start",justifyContent:"center"}}>
                     <span style={{width:18,height:18,borderRadius:"50%",background:"#374151",border:"1px solid #4b5563",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#9ca3af",fontWeight:700}}>{i+1}</span>
                   </div>
@@ -534,7 +574,8 @@ function CaseDetail({c,onClose,onEdit,onStepStatusChange}){
 
 // ── RUN VIEW ──────────────────────────────────────────────────────────────────
 function RunView({run,cases,onUpdate,onClose}){
-  const ac=cases.filter(c=>run.caseIds.includes(c.id));
+  const caseIds=run.caseIds||[];
+  const ac=cases.filter(c=>caseIds.includes(c.id));
   const res=run.results||{};
   const setStepRes=(cid,si,val)=>{const r={...res};if(!r[cid])r[cid]={};r[cid][si]=val;onUpdate({...run,results:r});};
   const setCaseNote=(cid,v)=>{const r={...res};if(!r[cid])r[cid]={};r[cid]._note=v;onUpdate({...run,results:r});};
@@ -588,15 +629,16 @@ function RunView({run,cases,onUpdate,onClose}){
               </div>
               {open&&(
                 <div style={{borderTop:"1px solid #374151",padding:"12px 16px",background:"#111827"}}>
-                  {c.steps.length>0&&(
+                  {(c.steps||[]).length>0&&(
                     <div style={{marginBottom:12}}>
                       <div style={{display:"grid",gridTemplateColumns:"24px 1fr 1fr 96px",background:"#1f2937",borderRadius:"6px 6px 0 0",border:"1px solid #374151",borderBottom:"none"}}>
                         {["#","Action","Expected","Result"].map((h,i)=><div key={h} style={{padding:"6px 10px",fontSize:10,fontWeight:700,color:"#6b7280",borderLeft:i>0?"1px solid #374151":"none",textAlign:i===0||i===3?"center":"left"}}>{h}</div>)}
                       </div>
-                      {c.steps.map((step,si)=>{
+                      {(c.steps||[]).map((step,si)=>{
+                        const runSteps=c.steps||[];
                         const sv=cr[si]||"untested",ss2=sst(sv),cyc2={untested:"passed",passed:"failed",failed:"blocked",blocked:"skipped",skipped:"untested"};
                         return (
-                          <div key={si} style={{display:"grid",gridTemplateColumns:"24px 1fr 1fr 96px",background:sv==="untested"?"#1a2332":ss2.bg+"22",border:"1px solid #374151",borderTop:"none",borderRadius:si===c.steps.length-1?"0 0 6px 6px":0}}>
+                          <div key={si} style={{display:"grid",gridTemplateColumns:"24px 1fr 1fr 96px",background:sv==="untested"?"#1a2332":ss2.bg+"22",border:"1px solid #374151",borderTop:"none",borderRadius:si===runSteps.length-1?"0 0 6px 6px":0}}>
                             <div style={{padding:"10px 6px",display:"flex",alignItems:"flex-start",justifyContent:"center"}}><span style={{width:16,height:16,borderRadius:"50%",background:"#374151",border:"1px solid #4b5563",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#9ca3af",fontWeight:700}}>{si+1}</span></div>
                             <div style={{padding:"10px",borderLeft:"1px solid #374151",fontSize:12,color:"#e5e7eb",lineHeight:1.5}}>{step.action}</div>
                             <div style={{padding:"10px",borderLeft:"1px solid #374151",fontSize:12,color:"#9ca3af",lineHeight:1.5}}>{step.expected}</div>
@@ -679,7 +721,8 @@ function NewRunForm({cases,teamName,teamColor,onSave,onCancel}){
 
 // ── RUNS LIST ─────────────────────────────────────────────────────────────────
 function RunsList({runs,teamColor,onOpen,onNew,onDelete}){
-  if(!runs.length) return (
+  const list=Array.isArray(runs)?runs:[];
+  if(!list.length) return (
     <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16}}>
       <div style={{fontSize:48}}>▶️</div>
       <div style={{fontSize:16,fontWeight:700,color:"#6b7280"}}>No test runs yet</div>
@@ -688,9 +731,10 @@ function RunsList({runs,teamColor,onOpen,onNew,onDelete}){
   );
   return (
     <div style={{flex:1,overflowY:"auto",padding:20}}>
-      {[...runs].reverse().map(run=>{
-        const total=run.caseIds.length,res=run.results||{};
-        const sts=run.caseIds.map(id=>res[id]?._status||"untested");
+      {[...list].reverse().map(run=>{
+        const ids=run.caseIds||[];
+        const total=ids.length,res=run.results||{};
+        const sts=ids.map(id=>res[id]?._status||"untested");
         const passed=sts.filter(s=>s==="passed").length,failed=sts.filter(s=>s==="failed").length,blocked=sts.filter(s=>s==="blocked").length,untested=sts.filter(s=>s==="untested").length;
         const pct=total>0?Math.round((passed/total)*100):0;
         const hasFail=failed>0,done=untested===0;
@@ -728,7 +772,7 @@ function RunsList({runs,teamColor,onOpen,onNew,onDelete}){
 
 // ── SUITE EDITOR ──────────────────────────────────────────────────────────────
 function SuiteEditor({teamName,teamColor,suites,onSave,onClose}){
-  const [list,setList]=useState([...suites]);
+  const [list,setList]=useState([...(suites||[])]);
   const [nv,setNv]=useState(""),[ei,setEi]=useState(null),[ev,setEv]=useState("");
   const ir=useRef();
   const add=()=>{const t=nv.trim();if(!t||list.includes(t))return;setList(l=>[...l,t]);setNv("");ir.current?.focus();};
@@ -773,8 +817,12 @@ function SuiteEditor({teamName,teamColor,suites,onSave,onClose}){
 
 // ── TEST CASE FORM ────────────────────────────────────────────────────────────
 function TestCaseForm({initial,onSave,onCancel,suites,teamName}){
-  const empty={title:"",suite:suites[0]||"",priority:"Medium",assignee:"Bob",preconditions:"",expectedResult:"",markAsCritical:false,steps:[{action:"",expected:""}],links:[],status:"draft"};
-  const [form,setForm]=useState(initial||empty);
+  const suiteList=Array.isArray(suites)&&suites.length?suites:[""];
+  const empty={title:"",suite:suiteList[0]||"",priority:"Medium",assignee:"Bob",preconditions:"",expectedResult:"",markAsCritical:false,steps:[{action:"",expected:""}],links:[],status:"draft"};
+  const [form,setForm]=useState(()=>{
+    if(!initial)return empty;
+    return {...empty,...initial,steps:Array.isArray(initial.steps)&&initial.steps.length?initial.steps:empty.steps,links:Array.isArray(initial.links)?initial.links:[]};
+  });
   const [tab,setTab]=useState("Links");
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   const ss=(i,k,v)=>{const s=[...form.steps];s[i]={...s[i],[k]:v};set("steps",s);};
@@ -793,7 +841,7 @@ function TestCaseForm({initial,onSave,onCancel,suites,teamName}){
       <div style={{padding:"20px 24px 24px"}}>
         <div style={{marginBottom:16}}><label style={{fontSize:12,color:"#d1d5db",marginBottom:6,display:"block"}}>Title</label><input style={inp} value={form.title} onChange={e=>set("title",e.target.value)} placeholder="Test case title"/></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
-          {[["Suite","suite",suites],["Priority","priority",PRIORITIES],["Assignee","assignee",ASSIGNEES]].map(([label,key,opts])=>(
+          {[["Suite","suite",suiteList],["Priority","priority",PRIORITIES],["Assignee","assignee",ASSIGNEES]].map(([label,key,opts])=>(
             <div key={key}><label style={{fontSize:12,color:"#d1d5db",marginBottom:6,display:"block"}}>{label}</label><Sel value={form[key]} onChange={v=>set(key,v)} options={opts} style={{width:"100%"}}/></div>
           ))}
         </div>
@@ -839,7 +887,7 @@ function TestCaseForm({initial,onSave,onCancel,suites,teamName}){
 
 // ── HOME SCREEN ───────────────────────────────────────────────────────────────
 function HomeScreen({teams,runs,onNavigate}){
-  const ac=Object.values(teams).flatMap(t=>t.cases);
+  const ac=Object.values(teams).flatMap(t=>t.cases||[]);
   const total=ac.length,passed=ac.filter(c=>c.status==="passed").length,crit=ac.filter(c=>c.markAsCritical).length;
   const pr=total>0?Math.round((passed/total)*100):0;
   const tr=Object.values(runs).flat().length;
@@ -858,7 +906,7 @@ function HomeScreen({teams,runs,onNavigate}){
           {Object.entries(teams).map(([name,t])=>(
             <button key={name} onClick={()=>onNavigate(name)} style={{background:t.color+"22",border:`1.5px solid ${t.color}55`,color:t.color,borderRadius:8,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:7}}>
               <span style={{width:22,height:22,borderRadius:5,background:t.color+"33",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800}}>{name[0]}</span>{name}
-              <span style={{fontSize:11,background:"rgba(0,0,0,.2)",borderRadius:10,padding:"1px 7px",color:"#e5e7eb"}}>{t.cases.length}</span>
+              <span style={{fontSize:11,background:"rgba(0,0,0,.2)",borderRadius:10,padding:"1px 7px",color:"#e5e7eb"}}>{(t.cases||[]).length}</span>
             </button>
           ))}
         </div>
@@ -876,14 +924,14 @@ function HomeScreen({teams,runs,onNavigate}){
         <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",letterSpacing:".05em",textTransform:"uppercase",marginBottom:14}}>Team Workspaces</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
           {Object.entries(teams).map(([name,t])=>{
-            const tc=t.cases,p=tc.filter(c=>c.status==="passed").length,f=tc.filter(c=>c.status==="failed").length,a=tc.filter(c=>c.status==="active").length,cr=tc.filter(c=>c.markAsCritical).length;
-            const nr=(runs[name]||[]).length;
+            const tc=t.cases||[],p=tc.filter(c=>c.status==="passed").length,f=tc.filter(c=>c.status==="failed").length,a=tc.filter(c=>c.status==="active").length,cr=tc.filter(c=>c.markAsCritical).length;
+            const nr=(Array.isArray(runs[name])?runs[name]:[]).length;
             return (
               <div key={name} onClick={()=>onNavigate(name)} style={{background:"#1f2937",border:`1px solid ${t.color}33`,borderRadius:12,padding:20,cursor:"pointer"}}
                 onMouseEnter={e=>e.currentTarget.style.borderColor=t.color+"99"} onMouseLeave={e=>e.currentTarget.style.borderColor=t.color+"33"}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
                   <span style={{width:36,height:36,borderRadius:9,background:t.color+"22",border:`1.5px solid ${t.color}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:t.color}}>{name[0]}</span>
-                  <div><div style={{fontSize:14,fontWeight:700,color:"#f9fafb"}}>{name}</div><div style={{fontSize:11,color:"#6b7280"}}>{t.suites.length} suites · {nr} runs</div></div>
+                  <div><div style={{fontSize:14,fontWeight:700,color:"#f9fafb"}}>{name}</div><div style={{fontSize:11,color:"#6b7280"}}>{(t.suites||[]).length} suites · {nr} runs</div></div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
                   {[["Total",tc.length,"#9ca3af"],["Active",a,"#60a5fa"],["Passed",p,"#4ade80"],["Failed",f,"#f87171"]].map(([l,v,c])=>(
@@ -1003,14 +1051,14 @@ export default function QAHub(){
       }catch{/* initial load optional */}
       try{await storageAPI.set(STORAGE_KEY,JSON.stringify(fresh));}catch{/* seed optional */}
       skipSave.current=false;
-      setTeams(fresh);
+      setTeams(normalizeTeams(fresh));
       setStorageReady(true);
     })();
   },[]);
 
   useEffect(()=>{
     (async()=>{
-      try{const r=await storageAPI.get(RUNS_KEY);if(r?.value)setRuns(JSON.parse(r.value));}catch{/* runs load optional */}
+      try{const r=await storageAPI.get(RUNS_KEY);if(r?.value)setRuns(normalizeRuns(JSON.parse(r.value)));}catch{/* runs load optional */}
       skipRunSave.current=false;
     })();
   },[]);
@@ -1020,7 +1068,7 @@ export default function QAHub(){
     const unsubscribe=storageAPI.subscribe(RUNS_KEY,(r)=>{
       try{
         if(!r?.value)return;
-        const rem=JSON.parse(r.value);
+        const rem=normalizeRuns(JSON.parse(r.value));
         setRuns(prev=>{
           const equal=JSON.stringify(prev)===JSON.stringify(rem);
           const isFirst=runsRemoteFirstSnapshotRef.current;
@@ -1072,9 +1120,9 @@ export default function QAHub(){
     </div>
   );
 
-  const team=teams[activeTeam];
+  const team=normalizeTeam(teams[activeTeam]);
   const allCases=team.cases;
-  const teamRuns=runs[activeTeam]||[];
+  const teamRuns=Array.isArray(runs[activeTeam])?runs[activeTeam]:[];
 
   const displayed=allCases.filter(c=>{
     if(activeNav==="Critical issues"&&!c.markAsCritical)return false;
@@ -1099,7 +1147,7 @@ export default function QAHub(){
 
   const exportCSV=()=>{
     const h=["Team","Suite","Title","Priority","Assignee","Status","Critical","Preconditions","Expected Result","Steps","Links"];
-    const rows=Object.entries(teams).flatMap(([tn,t])=>t.cases.map(c=>[tn,c.suite,c.title,c.priority,c.assignee,c.status,c.markAsCritical?"Yes":"No",c.preconditions||"",c.expectedResult||"",(c.steps||[]).map(s=>s.action+" | "+s.expected).join(" ;; "),(c.links||[]).map(l=>l.type+": "+l.url).join(" ;; ")]));
+    const rows=Object.entries(teams).flatMap(([tn,t])=>(t.cases||[]).map(c=>[tn,c.suite,c.title,c.priority,c.assignee,c.status,c.markAsCritical?"Yes":"No",c.preconditions||"",c.expectedResult||"",(c.steps||[]).map(s=>s.action+" | "+s.expected).join(" ;; "),(c.links||[]).map(l=>l.type+": "+l.url).join(" ;; ")]));
     const esc=v=>'"'+String(v).replace(/"/g,'""')+'"';
     setCsvData([h,...rows].map(r=>r.map(esc).join(",")).join("\n"));
   };
@@ -1119,7 +1167,7 @@ export default function QAHub(){
           {Object.entries(teams).map(([name,t])=>(
             <button key={name} onClick={()=>goTeam(name)} title={name} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:activeTeam===name&&!isHome?"rgba(255,255,255,.08)":"none",border:`1px solid ${activeTeam===name&&!isHome?t.color+"66":"transparent"}`,borderRadius:7,padding:"8px 10px",color:activeTeam===name&&!isHome?"#f9fafb":"#9ca3af",fontSize:13,cursor:"pointer",textAlign:"left",marginBottom:3,boxSizing:"border-box"}}>
               <span style={{width:28,height:28,borderRadius:7,background:t.color+"22",border:`1.5px solid ${t.color}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:t.color,flexShrink:0}}>{name[0]}</span>
-              {!collapsed&&<><span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</span><span style={{marginLeft:"auto",fontSize:10,background:"#374151",color:"#9ca3af",borderRadius:10,padding:"1px 6px"}}>{t.cases.length}</span></>}
+              {!collapsed&&<><span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</span><span style={{marginLeft:"auto",fontSize:10,background:"#374151",color:"#9ca3af",borderRadius:10,padding:"1px 6px"}}>{(t.cases||[]).length}</span></>}
             </button>
           ))}
         </div>
@@ -1137,8 +1185,8 @@ export default function QAHub(){
               <button onClick={()=>setModal("suites")} style={{background:"none",border:"none",color:"#6b7280",cursor:"pointer",fontSize:13,padding:"1px 4px",borderRadius:4}}
                 onMouseEnter={e=>{e.currentTarget.style.color="#d1d5db";e.currentTarget.style.background="#374151";}} onMouseLeave={e=>{e.currentTarget.style.color="#6b7280";e.currentTarget.style.background="none";}}>✎</button>
             </div>
-            {team.suites.length===0&&<button onClick={()=>setModal("suites")} style={{background:"none",border:"1px dashed #374151",borderRadius:6,color:"#4b5563",fontSize:12,padding:"6px 10px",cursor:"pointer",width:"100%",textAlign:"left"}}>+ Add a suite</button>}
-            {team.suites.map(s=>(
+            {(team.suites||[]).length===0&&<button onClick={()=>setModal("suites")} style={{background:"none",border:"1px dashed #374151",borderRadius:6,color:"#4b5563",fontSize:12,padding:"6px 10px",cursor:"pointer",width:"100%",textAlign:"left"}}>+ Add a suite</button>}
+            {(team.suites||[]).map(s=>(
               <button key={s} onClick={()=>{setActiveSuite(activeSuite===s?null:s);setActiveNav("Test cases");}} style={{display:"block",width:"100%",background:activeSuite===s?"#374151":"none",border:"none",borderRadius:6,padding:"7px 10px",color:activeSuite===s?"#f9fafb":"#9ca3af",fontSize:13,cursor:"pointer",textAlign:"left",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s}</button>
             ))}
           </div>
@@ -1157,7 +1205,7 @@ export default function QAHub(){
       </div>
 
       {/* Main */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div key={activeNav+activeTeam+(activeSuite||"")} className="view-fade" style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
         {isHome?(
           <HomeScreen teams={teams} runs={runs} onNavigate={goTeam}/>
         ):(
@@ -1214,8 +1262,8 @@ export default function QAHub(){
                             <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11,color:"#6b7280"}}>
                               <span style={{color:pc(c.priority)}}>● {c.priority}</span>
                               <span>{c.suite}</span><span>{c.assignee}</span>
-                              <span>{c.steps.length} steps</span>
-                              {c.links.length>0&&<span>🔗 {c.links.length}</span>}
+                              <span>{(c.steps||[]).length} steps</span>
+                              {(c.links||[]).length>0&&<span>🔗 {(c.links||[]).length}</span>}
                             </div>
                           </div>
                           <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
