@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { storageAPI } from "./storage";
 import "./App.css";
 
@@ -416,6 +416,169 @@ const RAW_CASES = [
     ["Purchase a third ticket for the same event independently.","Third purchase completes successfully. Confirmation email received. No errors during checkout."],
     ["Have all three ticket holders attempt check-in via SnapEntry biometric scan at the event.","All three attendees check in successfully using face recognition. No errors or collection mismatch messages appear. All check-ins appear on the Attendees page."]],
    [["Jira","https://jira.company.com/browse/TEAM-000"]]],
+
+  [1063,"TC-063 Create a new event end-to-end","Event Management","Critical","Bob",true,
+   "Logged in as Org Admin on tickets.fastbreak-dev.ai. No event exists yet for this test run.",
+   "Event appears in the Events list with correct name, dates, and timezone. Public checkout URL is accessible. Banner image displays correctly.",
+   [["Go to the admin dashboard. In the left sidebar click Events, then click Create Event.","The event creation form opens."],
+    ["Fill in: Event Name = Summer Fest 2026, Start Date = any future date, End Date = 2 days later, Timezone = America/New_York.","All fields accept input. No validation errors shown."],
+    ["In the Description field type a short description (up to 100 characters).","Text is accepted with no errors."],
+    ["Upload a banner image (any JPEG under 5 MB). If a cropping tool appears, adjust it and click Apply.","Banner image previews correctly in the form."],
+    ["Click Add Venue. Enter a venue name (e.g. Main Stage). Save the venue.","Venue appears attached to the event."],
+    ["Click Save or Create Event.","Success message appears. You are taken to the event detail page."],
+    ["In the left sidebar click Events to return to the Events list.","The new Summer Fest 2026 event appears with the correct dates."],
+    ["Open the event, find the Public Checkout URL (usually in Overview or Settings), and open it in a new browser tab.","Checkout page loads. Event name, dates, and banner image display correctly."]]],
+  [1064,"TC-064 Exit scan records departure and re-entry allowed after exit","Snap Entry","Critical","Bob",true,
+   "Snap Entry installed on a test device. A ticket has already been checked in (green entry scan completed). Exit Scan is enabled for the event.",
+   "Exit is recorded with a timestamp. A second entry scan succeeds after the exit. The admin dashboard shows both entry and exit events.",
+   [["Open Snap Entry and navigate to the test event. Tap the Exit Scan tab.","Exit Scan tab is active. Camera is ready."],
+    ["Scan the QR code of the already-checked-in attendee.","Exit scan result screen appears confirming the attendee has exited."],
+    ["On a computer open the event Attendees page in the admin dashboard. Find this attendee.","Attendee record shows both an entry event and an exit event with timestamps."],
+    ["In Snap Entry switch back to the Entry Scan tab. Scan the same QR code again.","Green success screen appears, allowing re-entry. A new check-in is recorded."],
+    ["Refresh the Attendees page in the admin dashboard and check the attendee record.","Two entry events and one exit event are visible. All timestamps are in correct chronological order."]]],
+  [1065,"TC-065 Ticket transfer declined by recipient — original ticket stays active","Ticket Management","High","Alice",false,
+   "A ticket has been purchased. A second email address is available to receive the transfer request. Snap Entry is available on a test device.",
+   "Original ticket remains valid and scannable with the original holder. No transfer is recorded. The second email address receives no ticket.",
+   [["In the admin dashboard go to Attendees, find the ticket, open Attendee Detail.","Attendee Detail shows ticket as active."],
+    ["Click Transfer Ticket. Enter the second email address. Click Confirm.","Transfer request is sent. The second email address receives a transfer notification email."],
+    ["Open the transfer email in the second inbox. Click the Decline link or button.","A confirmation page loads stating the transfer was declined."],
+    ["In the admin dashboard return to the original order in Attendees. Check the ticket status.","Ticket status is still Active (not transferred). The original holder still owns the ticket."],
+    ["Scan the original QR code in Snap Entry.","Green success screen appears. The original holder can check in successfully."]]],
+  [1066,"TC-066 All-In Eat Fees — buyer sees single price with no separate fee line item","Checkout and Payments","Critical","Bob",true,
+   "Logged in as Org Admin. All-In Pricing (Eat Fees) is enabled at the org or event level. A ticket is priced at $30.00. Test card: 4242 4242 4242 4242, expiry 12/34, CVC 123.",
+   "Buyer pays exactly $30.00. No fees appear as a separate line item at checkout. Organizer payout in Stripe reflects the absorbed fee. Accounting confirms fee absorption.",
+   [["In the admin dashboard open the event. Go to Configuration, Settings, All-In Pricing or Eat Fees. Confirm it is enabled. Note the ticket price ($30.00).","All-In Pricing is ON. Ticket shows $30.00."],
+    ["Open the public checkout URL in a new incognito browser tab.","Checkout page loads. Ticket is listed at $30.00."],
+    ["Look carefully at the order summary. Check for any separate fee or service charge line items.","No separate fee line item is shown. The total is $30.00. The buyer sees only one clean price."],
+    ["Add the ticket and proceed to payment. Enter the test card details. Complete the purchase.","Payment processes for exactly $30.00. Confirmation page and email received."],
+    ["Go to the event Accounting page in the admin dashboard. Find this transaction.","Transaction shows $30.00 gross. The organizer payout is $30.00 minus the actual Stripe processing fee. The buyer was not charged any extra fee on top of $30.00."]],
+   [["Jira","https://jira.company.com/browse/TIX-1265"]]],
+  [1067,"TC-067 All-In Reverse Price Calculation — organizer sets final price, system back-calculates base","Checkout and Payments","Critical","Bob",true,
+   "Logged in as Org Admin. Reverse Price Calculation is enabled on the event. The desired final buyer price is set to $50.00 and saved. Test card: 4242 4242 4242 4242, expiry 12/34, CVC 123.",
+   "Buyer pays exactly $50.00. The base ticket price in admin is lower than $50.00. Stripe charge equals $50.00. Accounting shows correct gross and net figures.",
+   [["In the admin dashboard open the event. Go to Ticket Types and click Edit on the target ticket. Locate the Final Buyer Price or Reverse Price input. Confirm it is set to $50.00. Note the calculated base price (it should be less than $50.00).","System shows a base price lower than $50.00 (e.g. $47.17). The displayed final price for the buyer is $50.00."],
+    ["Open the public checkout URL in a new incognito browser tab.","Checkout page loads. Ticket price displayed to the buyer is $50.00."],
+    ["Review the checkout summary. Check if any fees are added on top of $50.00.","Total is $50.00. No additional fees added on top. Any fee breakdown shows fees included within the $50.00, not added above it."],
+    ["Complete the purchase with the test card.","Payment processes for exactly $50.00. Confirmation page and email received."],
+    ["Go to the event Accounting page. Find this transaction and check the figures.","Gross Revenue shows $50.00. Processing fee is deducted from the organizer payout. The base price back-calculation is accurate."]],
+   [["Jira","https://jira.company.com/browse/TIX-1265"]]],
+  [1068,"TC-068 Promo code fixed-amount discount applied correctly","Checkout and Payments","High","Alice",false,
+   "Logged in as Org Admin. A $50.00 ticket exists on the event. A new promo code with a $10 fixed-amount discount will be created.",
+   "$10.00 discount shown as a line item. Fees recalculated on the $40.00 subtotal. Stripe charge matches the discounted total. Usage count increments to 1.",
+   [["Go to Event, Promotions, Create Promo Code. Set Code = FLAT10, Discount Type = Fixed Amount, Amount = $10.00, Max Uses = 5. Save.","Promo code FLAT10 is created with Fixed Amount type."],
+    ["Open the public checkout in a new incognito tab. Add the $50.00 ticket. Proceed to checkout.","Order summary shows $50.00 subtotal."],
+    ["In the promo code field enter FLAT10 and click Apply.","A -$10.00 discount line item appears. The new subtotal shows $40.00. Fees are recalculated on the $40.00 base."],
+    ["Complete the purchase with the test card (4242 4242 4242 4242, expiry 12/34, CVC 123).","Payment processes. Stripe charge equals $40.00 plus applicable fees. Confirmation page and email received."],
+    ["Go to Event, Promotions and find the FLAT10 code. Check the usage count.","Usage count shows 1 of 5."]]],
+  [1069,"TC-069 Expired promo code is rejected at checkout","Checkout and Payments","High","Alice",false,
+   "A promo code exists with an End Date set to yesterday. The code has not reached its Max Uses limit.",
+   "The expired code is rejected with a clear error message. No discount is applied. The order total is unchanged.",
+   [["In the admin dashboard go to Event, Promotions. Create or confirm a promo code with an End Date of yesterday. Note the code name.","Promo code exists with a past end date. Max Uses limit not reached."],
+    ["Open the public checkout in a new incognito tab. Add a ticket and proceed to checkout.","Checkout page loads with order summary."],
+    ["Enter the expired promo code in the promo code field and click Apply.","A clear error message appears (e.g. This promo code has expired or Code is no longer valid). No discount is applied. The total is unchanged."]]],
+  [1070,"TC-070 Inactive ticket type cannot be purchased at checkout","Checkout and Payments","Critical","Bob",true,
+   "Logged in as Org Admin. An event has two ticket types: one Active ($25) and one Inactive ($50). The public checkout URL is available.",
+   "Only the Active $25 ticket is available at checkout. The Inactive $50 ticket cannot be added to cart or purchased.",
+   [["In the admin dashboard go to the event Tickets tab. Find the $50 ticket type. Click Edit. Change its status to Inactive or disable it. Save.","Ticket type is now marked as Inactive."],
+    ["Open the public checkout URL in a new incognito browser tab.","Checkout page loads."],
+    ["Look at the available tickets on the checkout page.","Only the $25 Active ticket is listed. The $50 Inactive ticket does NOT appear, or is clearly marked as unavailable with no Add to Cart option."],
+    ["If the inactive ticket is visible, attempt to add it to the cart.","The action is blocked. You cannot add an inactive ticket to the cart or proceed to payment."]],
+   [["Jira","https://jira.company.com/browse/TIX-501"]]],
+  [1071,"TC-071 CAD currency checkout displays and charges in Canadian dollars","Checkout and Payments","High","Alice",false,
+   "An event is configured with Currency set to CAD and has a ticket priced at CAD $30.00. Test card: 4242 4242 4242 4242.",
+   "All checkout amounts show CAD currency. Stripe charges in CAD. Accounting page shows CAD figures.",
+   [["Open the public checkout URL for the CAD event in a new incognito browser tab.","Checkout page loads."],
+    ["Look at the ticket price and currency symbol displayed.","Price shows CAD $30.00 (or C$30.00). No USD-only symbol shown without a CAD indicator."],
+    ["Add the ticket and proceed to the Stripe payment screen.","Stripe payment form shows the charge in CAD."],
+    ["Complete the purchase with the test card.","Payment succeeds. Confirmation page and email received showing CAD pricing."],
+    ["Go to the admin dashboard Accounting page for the CAD event.","All revenue figures display in CAD. No incorrect USD conversion shown."]]],
+  [1072,"TC-072 Admin issues a complimentary ticket at $0 — QR is valid and scannable","Checkout and Payments","High","Alice",false,
+   "Logged in as Org Admin. An active event with a paid ticket type exists. A recipient email address is ready.",
+   "$0 complimentary ticket is issued. No Stripe charge occurs. Recipient receives ticket by email. QR is valid and scannable in Snap Entry. Accounting shows $0.",
+   [["In the admin dashboard navigate to the event Attendees page. Look for an option such as Issue Complimentary Ticket or Add Attendee. Click it.","A form or modal opens for issuing a free ticket."],
+    ["Select the ticket type. Enter the recipient email address. Leave the price at $0 (complimentary). Confirm.","Ticket is issued. Success message appears."],
+    ["Check the recipient email inbox.","The recipient receives a ticket confirmation email with a View Ticket link and QR code."],
+    ["Open the digital ticket from the email. Check the price shown.","Ticket page loads. Price shows $0 or Complimentary. QR code is visible."],
+    ["Scan the QR code in Snap Entry.","Green success screen appears. Holder name and ticket type are correct."],
+    ["Go to the event Accounting page and find the complimentary ticket entry.","Transaction appears with $0.00 gross revenue. No Stripe charge. Not counted as paid revenue."]]],
+  [1073,"TC-073 Season Pass end-to-end purchase — tickets auto-distributed to all events","Season Passes","Critical","Bob",true,
+   "A Season exists with 2 events, each with an active ticket type included in the pass. A public Season Pass checkout URL is available. Test card: 4242 4242 4242 4242, expiry 12/34, CVC 123.",
+   "Season Pass purchase is recorded. Confirmation email received. Individual tickets are automatically distributed to both events. Buyer appears on the Season Passholders page.",
+   [["Open the Season Pass public checkout URL in a new incognito browser tab.","Season Pass checkout page loads. The two included events are listed. Price is correct."],
+    ["Add the Season Pass to cart and click Checkout.","You are taken to the payment screen."],
+    ["Complete the purchase with the test card.","Payment processes. Confirmation page shown. Confirmation email arrives in the buyer inbox."],
+    ["In the admin dashboard go to the Season then Passholders page.","The new buyer appears in the Passholders list with their order number and status."],
+    ["Go to Event 1 Attendees page. Search for the buyer email.","The buyer has a ticket in Event 1. It was automatically distributed, not manually added."],
+    ["Go to Event 2 Attendees page. Search for the same buyer email.","The buyer also has a ticket in Event 2. Both individual tickets are active and have valid QR codes."]]],
+  [1074,"TC-074 Season Passholders CSV export contains all passholders with correct data","Season Passes","High","Alice",false,
+   "A Season has at least 3 passholders with completed purchases.",
+   "CSV file downloads successfully. Contains one row per passholder. Key columns are present and data matches the web UI.",
+   [["In the admin dashboard open the Season and navigate to the Passholders page.","Passholders list loads showing 3 or more entries."],
+    ["Click the Export CSV button.","A CSV file downloads to your computer."],
+    ["Open the CSV in Excel or Google Sheets. Check for these columns: Name, Email, Order Number, Pass Status, Purchase Date.","All 5 listed columns are present."],
+    ["Count the data rows excluding the header.","The row count matches the number of passholders shown on the web page. No passholder is missing."],
+    ["Check one row for accuracy: verify name, email, and order number match what the Passholders web page shows.","Data in the CSV matches the web UI exactly."]]],
+  [1075,"TC-075 Snap Entry shows ticket metadata on scan result screen","Snap Entry","High","Alice",false,
+   "Event has Ticket Metadata configured with at least one field: Ticket Holder Name (Required). A ticket was purchased with value Jordan Lee entered. Snap Entry is updated to the latest build that includes metadata display.",
+   "After scanning, the result screen in Snap Entry shows the metadata value Jordan Lee. Staff can read it without opening the web admin dashboard.",
+   [["On the test device open Snap Entry. Log in and navigate to the test event. Tap Entry Scan.","Camera is ready to scan."],
+    ["Scan the QR code of the ticket purchased with the metadata value Jordan Lee.","Green success screen appears."],
+    ["Carefully read the success screen. Look for a metadata section or field labeled Ticket Holder Name.","The success screen shows Jordan Lee (the metadata value entered at checkout). The field label is visible."],
+    ["Dismiss the result and return to scan mode.","App returns to the live camera scanning state. No errors."]],
+   [["Jira","https://jira.company.com/browse/TIX-1295"]]],
+  [1076,"TC-076 Biometric event settings toggle enables biometric requirement at checkout","Checkout and Payments","Critical","Bob",true,
+   "Logged in as a Fastbreak internal admin (biometric toggle is behind an FB Internal feature flag). An event exists with biometrics currently disabled.",
+   "Enabling the toggle causes the checkout page to show a biometric warning card and required contact fields. Disabling it removes them.",
+   [["In the admin dashboard open the event. Navigate to Settings or Security Settings. Look for the Biometric Check-In or Face ID Verification toggle. Confirm it is OFF.","Toggle is visible and currently set to OFF."],
+    ["Enable the biometric toggle. Save or confirm.","Toggle changes to ON. A success or confirmation message appears."],
+    ["Open the public checkout URL for this event in a new incognito browser tab.","Checkout page loads."],
+    ["Look at the checkout form for a biometric warning card or consent notice. Check that First Name and Last Name (or contact info) are now required fields.","Biometric warning card IS visible. Required contact fields are present. These were NOT present before the toggle was enabled."],
+    ["Go back to the admin dashboard. Disable the biometric toggle. Save. Open the checkout URL again in a fresh incognito tab.","The biometric warning card is gone. Forced contact fields are no longer required. Checkout looks like a standard event checkout."]],
+   [["Jira","https://jira.company.com/browse/TIX-1284"]]],
+  [1077,"TC-077 Attendee uploads biometric ID via emailed link and can then check in","Checkout and Payments","Critical","Charlie",true,
+   "Event has biometrics enabled. A ticket was purchased but the attendee never uploaded their ID photo. An upload link has been sent to the attendee email (automatically or triggered by staff via the admin dashboard).",
+   "Upload link opens correctly. Photo uploads successfully. Attendee Detail shows photo uploaded. SnapEntry check-in succeeds after upload.",
+   [["Open the attendee email inbox. Find the email with subject related to ID upload or biometric verification required.","Email has arrived with a unique upload link for this ticket."],
+    ["Click the upload link in the email.","A web page opens with instructions and an ID photo upload form."],
+    ["Upload a clear, well-lit face photo (a test image is fine). Click Submit or Upload.","Upload succeeds. A confirmation message appears (e.g. Your photo has been received. You are all set for check-in.)."],
+    ["In the admin dashboard go to the event Attendees page and open this attendee detail.","Attendee Detail shows that the biometric image has been uploaded (e.g. a status indicator or photo thumbnail is present)."],
+    ["On a test device open Snap Entry and scan the attendee QR code in biometric check-in mode.","SnapEntry performs the face match. Green success screen appears. Check-in is recorded."]],
+   [["Jira","https://jira.company.com/browse/TIX-1288"]]],
+  [1078,"TC-078 Password reset flow completes and new password works","Authentication","Critical","Bob",true,
+   "A registered user account exists with a known email address. Access to the email inbox is available.",
+   "Password reset email received. New password accepted. User logs in successfully with the new password. Old password no longer works.",
+   [["Go to identity.fastbreak.ai (the login page). Enter the registered email. Enter an incorrect password and click Sign In.","Login fails. An error message says Invalid credentials or similar."],
+    ["Click the Forgot Password or Reset Password link on the login page.","A password reset form appears asking for your email address."],
+    ["Enter the registered email address. Click Send Reset Email or Submit.","A success message appears (e.g. Check your email for a reset link)."],
+    ["Open the email inbox. Find the password reset email from Easy Event Tickets or Fastbreak. Click the reset link.","A browser tab opens with a Set New Password form. The link works and does not show an expired or invalid error."],
+    ["Enter a new password (e.g. NewPass2026!). Confirm it. Click Save or Update Password.","Success message appears. You are redirected to the login page or automatically logged in."],
+    ["If redirected to login, enter the email and the new password. Click Sign In.","Login succeeds. You arrive at the normal org dashboard. The old password no longer works."]]],
+  [1079,"TC-079 Expired session redirects to login once — no infinite loop","Authentication","High","Alice",false,
+   "A user is logged in to the EET admin dashboard. You will simulate session expiry by clearing auth cookies in browser DevTools (F12, Application tab, Cookies, delete all cookies for the EET/Fastbreak domain).",
+   "User is redirected to the login page exactly once. After logging in again, user returns to the dashboard. No infinite redirect loop. No manual cookie clear required.",
+   [["Log in to the EET admin dashboard normally. Navigate to any page (e.g. Events list).","Logged in. Events list is visible."],
+    ["Open browser DevTools (F12). Go to Application, Storage, Cookies. Delete all cookies for the EET and Fastbreak domain. Close DevTools.","Cookies are cleared. The auth session is now invalid."],
+    ["Try to perform any action on the current page, such as clicking an event or pressing the browser refresh button.","Browser detects the session is invalid."],
+    ["Observe the redirect behavior carefully.","You are redirected to the login page at identity.fastbreak.ai exactly once. You are NOT bounced between pages in a loop."],
+    ["Log in with valid credentials.","Login succeeds. You arrive at the EET dashboard. No error page and no need to manually clear cookies."]],
+   [["Jira","https://jira.company.com/browse/TIX-1066"]]],
+  [1080,"TC-080 Marketing SMS opt-in is captured correctly at checkout","Checkout and Payments","High","Alice",false,
+   "Public event checkout URL available. Checkout form has a marketing SMS opt-in checkbox (e.g. Receive event updates via SMS). A phone number field is present. Test card: 4242 4242 4242 4242.",
+   "When the opt-in checkbox is checked the attendee record stores TRUE. When unchecked it stores FALSE. Both orders show different opt-in values confirming correct capture.",
+   [["Open the public checkout URL in a new incognito tab. Add a ticket and proceed to the checkout form.","Checkout form loads. A marketing SMS opt-in checkbox is visible."],
+    ["Enter a valid phone number. Check the marketing opt-in checkbox. Complete the purchase with the test card.","Purchase succeeds. Confirmation page shown."],
+    ["In the admin dashboard go to Attendees. Find this order and open Attendee Detail. Look for the marketing opt-in field.","The opt-in field shows TRUE (or Yes or Checked). It is NOT showing FALSE."],
+    ["Open a second incognito tab. Do another purchase. This time leave the marketing opt-in checkbox unchecked. Complete the purchase.","Purchase succeeds."],
+    ["Find the second order in Attendees and open its Attendee Detail. Check the marketing opt-in field.","The opt-in field shows FALSE (or No or Unchecked). The two orders have different opt-in values, confirming the checkbox state is captured correctly."]],
+   [["Jira","https://jira.company.com/browse/TIX-534"]]],
+  [1081,"TC-081 Flex Day Pass access enforced — entry rejected on unselected days","Ticket Management","High","Alice",false,
+   "An event has 3 days. A Flex Day Pass ticket type exists allowing the buyer to choose any 2 of the 3 days. A buyer has purchased the pass selecting Day 1 and Day 2 only (NOT Day 3). Snap Entry is available and configured to show which day is active.",
+   "QR scans successfully on Day 1 and Day 2. On Day 3 the scan is rejected with a clear message. No check-in is recorded for Day 3.",
+   [["Open the public checkout for the Flex Day Pass event. Select the pass and choose Day 1 and Day 2. Do NOT select Day 3. Complete the purchase with a test card.","Purchase succeeds. Confirmation email received. Ticket shows access for Day 1 and Day 2 only."],
+    ["In Snap Entry navigate to the event. Set the active scan day to Day 1. Scan the QR code.","Green success screen appears. Check-in for Day 1 is recorded."],
+    ["In Snap Entry switch the active day to Day 2. Scan the same QR code.","Green success screen appears. Check-in for Day 2 is recorded."],
+    ["In Snap Entry switch the active day to Day 3. Scan the same QR code.","Red rejection screen appears. Message indicates this ticket is not valid for Day 3. No check-in is recorded for Day 3."],
+    ["On the admin dashboard Attendees page check the check-in records for this attendee.","Two check-in records exist (Day 1 and Day 2). No Day 3 check-in entry exists."]]],
 ];
 
 const REGRESSION_CASES = RAW_CASES.map(([id,title,suite,priority,assignee,markAsCritical,preconditions,expectedResult,rawSteps,rawLinks=[]]) => ({
@@ -426,7 +589,7 @@ const REGRESSION_CASES = RAW_CASES.map(([id,title,suite,priority,assignee,markAs
 }));
 
 const TEAMS_DEFAULT = {
-  Ticketing:{ color:"#3b82f6", suites:["Ticket Management","Checkout and Payments","Snap Entry","Season Passes","Accounting and Reporting","Authentication"], cases:[] },
+  Ticketing:{ color:"#3b82f6", suites:["Event Management","Ticket Management","Checkout and Payments","Snap Entry","Season Passes","Accounting and Reporting","Authentication"], cases:[] },
   Travel:{ color:"#22c55e", suites:["Search","Booking","Payments","Cancellation"], cases:[] },
   Compete:{ color:"#a855f7", suites:["Onboarding","Leaderboard","Scoring","Reporting"], cases:[] },
 };
@@ -434,7 +597,7 @@ const TEAMS_DEFAULT = {
 const STORAGE_KEY  = "qa-hub-shared-data";
 const RUNS_KEY     = "qa-hub-runs";
 const VERSION_KEY  = "qa-hub-data-version";
-const DATA_VERSION = "2";
+const DATA_VERSION = "3";
 
 function normalizeCase(c){
   if(!c||typeof c!=="object")return c;
@@ -492,6 +655,316 @@ const pc  = p => ({Low:"#6b7280",Medium:"#f59e0b",High:"#f97316",Critical:"#ef44
 const sb  = s => ({draft:{bg:"#374151",text:"#9ca3af",label:"Draft"},active:{bg:"#1e3a5f",text:"#60a5fa",label:"Active"},passed:{bg:"#14532d",text:"#4ade80",label:"Passed"},failed:{bg:"#450a0a",text:"#f87171",label:"Failed"}}[s]||{bg:"#374151",text:"#9ca3af",label:s});
 const sst = s => ({untested:{bg:"#374151",text:"#9ca3af",label:"Untested",icon:"○"},passed:{bg:"#14532d",text:"#4ade80",label:"Passed",icon:"✓"},failed:{bg:"#450a0a",text:"#f87171",label:"Failed",icon:"✕"},blocked:{bg:"#451a03",text:"#fb923c",label:"Blocked",icon:"⊘"},skipped:{bg:"#1e1b4b",text:"#a5b4fc",label:"Skipped",icon:"→"}}[s]||{bg:"#374151",text:"#9ca3af",label:s,icon:"○"});
 
+// ── CSV: QA Hub round-trip + Xray Test Case Importer + Zephyr Squad ───────────
+const CSV_EXPORT_HINTS={
+  legacy:"One row per test. Full round-trip with QA Hub Import.",
+  xray:"Multi-row manual tests: same Test Case Identifier = one test. Map columns in Xray’s Test Case Importer (Summary, Action, Expected Result, etc.). Component = Team / Suite.",
+  zephyr:"Multi-row steps: repeat Name per step (Zephyr Squad CSV). Map columns in the import wizard. Folder = Team/Suite. Labels include QA-Hub and optional Assignee:name.",
+};
+function escCsvCell(v){
+  const s=String(v??"");
+  if(/[",\n\r]/.test(s))return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function matrixToCsv(matrix){
+  return matrix.map(row=>row.map(escCsvCell).join(",")).join("\n");
+}
+function buildLegacyExportMatrix(teams){
+  const h=["Team","Suite","Title","Priority","Assignee","Status","Critical","Preconditions","Expected Result","Steps","Links"];
+  const rows=Object.entries(teams).flatMap(([tn,t])=>(t.cases||[]).map(c=>[
+    tn,c.suite||"",c.title||"",c.priority||"Medium",c.assignee||"",
+    c.status||"draft",c.markAsCritical?"Yes":"No",
+    c.preconditions||"",c.expectedResult||"",
+    (c.steps||[]).map(s=>(s.action||"")+" | "+(s.expected||"")).join(" ;; "),
+    (c.links||[]).map(l=>(l.type||"")+": "+(l.url||"")).join(" ;; "),
+  ]));
+  return [h,...rows];
+}
+function buildXrayExportMatrix(teams){
+  const h=["Test Case Identifier","Summary","Priority","Component","Description","Action","Data","Expected Result"];
+  const rows=[];
+  Object.entries(teams).forEach(([tn,t])=>{
+    (t.cases||[]).forEach(c=>{
+      const tcid=`TC-${c.id}`;
+      const comp=`${tn} / ${c.suite||""}`.trim();
+      const desc=[c.preconditions||"",c.expectedResult||""].filter(Boolean).join("\n\n");
+      const steps=c.steps||[];
+      if(steps.length===0){
+        rows.push([tcid,c.title||"",c.priority||"Medium",comp,desc,"","",""]);
+      }else{
+        steps.forEach((s,si)=>{
+          const first=si===0;
+          rows.push([
+            tcid,
+            first?(c.title||""):"",
+            first?(c.priority||"Medium"):"",
+            first?comp:"",
+            first?desc:"",
+            s.action||"",
+            "",
+            s.expected||"",
+          ]);
+        });
+      }
+    });
+  });
+  return [h,...rows];
+}
+function buildZephyrExportMatrix(teams){
+  const h=["Name","Precondition","Objective","Folder","Status","Priority","Labels","Test Script (Steps) - Step","Test Script (Steps) - Expected Result"];
+  const rows=[];
+  Object.entries(teams).forEach(([tn,t])=>{
+    (t.cases||[]).forEach(c=>{
+      const folder=`${tn}/${c.suite||"General"}`.replace(/\/+/g,"/");
+      const labels=["QA-Hub",c.markAsCritical?"Critical":"",c.assignee?`Assignee:${c.assignee}`:""].filter(Boolean).join(";");
+      const steps=c.steps||[];
+      if(steps.length===0){
+        rows.push([c.title||"",c.preconditions||"",c.expectedResult||"",folder,c.status||"draft",c.priority||"Medium",labels,"",""]);
+      }else{
+        steps.forEach((s,si)=>{
+          rows.push([
+            c.title||"",
+            si===0?(c.preconditions||""):"",
+            si===0?(c.expectedResult||""):"",
+            si===0?folder:"",
+            si===0?(c.status||"draft"):"",
+            si===0?(c.priority||"Medium"):"",
+            si===0?labels:"",
+            s.action||"",
+            s.expected||"",
+          ]);
+        });
+      }
+    });
+  });
+  return [h,...rows];
+}
+function parseCsvToMatrix(text){
+  const rows=[];
+  let row=[];
+  let field="";
+  let i=0;
+  let inQ=false;
+  const pushF=()=>{row.push(field);field="";};
+  const pushR=()=>{if(row.length>1||row[0]!=="")rows.push(row);row=[];};
+  while(i<text.length){
+    const c=text[i];
+    if(inQ){
+      if(c==='"'){
+        if(text[i+1]==='"'){field+='"';i+=2;continue;}
+        inQ=false;i++;continue;
+      }
+      field+=c;i++;continue;
+    }
+    if(c==='"'){inQ=true;i++;continue;}
+    if(c===","){pushF();i++;continue;}
+    if(c==="\n"){pushF();pushR();i++;continue;}
+    if(c==="\r"){i++;continue;}
+    field+=c;i++;
+  }
+  pushF();
+  if(row.length&&(row.length>1||row[0]!==""))rows.push(row);
+  return rows;
+}
+function csvHeaderIndex(header,...cands){
+  const hl=header.map(x=>String(x).trim().toLowerCase());
+  for(const c of cands){
+    const cl=String(c).toLowerCase();
+    const ix=hl.indexOf(cl);
+    if(ix>=0)return ix;
+  }
+  for(const c of cands){
+    const cl=String(c).toLowerCase();
+    const ix=hl.findIndex(h=>h.includes(cl));
+    if(ix>=0)return ix;
+  }
+  return -1;
+}
+function detectCsvFormat(headerRow){
+  if(!headerRow?.length)return null;
+  const hl=headerRow.map(x=>String(x).trim().toLowerCase());
+  if(hl.some(h=>h.includes("test case identifier"))&&hl.some(h=>h.includes("summary")))return "xray";
+  if(hl.some(h=>h.includes("test script (steps)")))return "zephyr";
+  if(hl.includes("team")&&hl.includes("title"))return "legacy";
+  return null;
+}
+function parseLegacyStepsCell(cell){
+  if(!cell||!String(cell).trim())return[];
+  return String(cell).split(/\s*;;\s*/).map(part=>{
+    const j=part.indexOf(" | ");
+    if(j<0)return{action:part.trim(),expected:""};
+    return{action:part.slice(0,j).trim(),expected:part.slice(j+3).trim()};
+  });
+}
+function parseLegacyLinksCell(cell){
+  if(!cell||!String(cell).trim())return[];
+  return String(cell).split(/\s*;;\s*/).map(part=>{
+    const j=part.indexOf(": ");
+    if(j<0)return{type:"Other",url:part.trim()};
+    return{type:part.slice(0,j).trim()||"Other",url:part.slice(j+2).trim()};
+  }).filter(l=>l.url);
+}
+function normStatus(s){
+  const x=String(s||"").trim().toLowerCase();
+  if(["draft","active","passed","failed"].includes(x))return x;
+  if(x==="pass"||x==="passed")return "passed";
+  if(x==="fail"||x==="failed")return "failed";
+  return "draft";
+}
+function newCaseId(){return Math.floor(Date.now()+Math.random()*1e9);}
+function importCasesFromMatrix(matrix,fmt){
+  if(matrix.length<2)return{ok:false,error:"No data rows"};
+  const h=matrix[0].map(x=>String(x).trim());
+  const merge={};
+  const add=(team,c)=>{
+    if(!merge[team])merge[team]=[];
+    merge[team].push(c);
+  };
+  if(fmt==="legacy"){
+    const iT=csvHeaderIndex(h,"team"),iS=csvHeaderIndex(h,"suite"),iTi=csvHeaderIndex(h,"title"),iP=csvHeaderIndex(h,"priority"),
+      iA=csvHeaderIndex(h,"assignee"),iSt=csvHeaderIndex(h,"status"),iCr=csvHeaderIndex(h,"critical"),
+      iPr=csvHeaderIndex(h,"preconditions"),iEx=csvHeaderIndex(h,"expected result"),iSteps=csvHeaderIndex(h,"steps"),iLk=csvHeaderIndex(h,"links");
+    if(iT<0||iTi<0)return{ok:false,error:"Legacy CSV needs Team and Title columns"};
+    for(let r=1;r<matrix.length;r++){
+      const row=matrix[r];
+      const title=String(row[iTi]??"").trim();
+      if(!title)continue;
+      const team=String(row[iT]??"").trim()||"Imported";
+      const crit=String(row[iCr]??"").trim().toLowerCase();
+      add(team,{
+        id:newCaseId(),
+        title,
+        suite:String(row[iS]??"").trim()||"General",
+        priority:PRIORITIES.includes(row[iP])?row[iP]:"Medium",
+        assignee:ASSIGNEES.includes(row[iA])?row[iA]:"Bob",
+        status:normStatus(row[iSt]),
+        markAsCritical:["yes","y","true","1","critical"].includes(crit),
+        preconditions:String(row[iPr]??"").trim(),
+        expectedResult:String(row[iEx]??"").trim(),
+        steps:parseLegacyStepsCell(row[iSteps]),
+        links:parseLegacyLinksCell(row[iLk]),
+      });
+    }
+  }else if(fmt==="xray"){
+    const iId=csvHeaderIndex(h,"test case identifier","tcid"),iSu=csvHeaderIndex(h,"summary"),iPr=csvHeaderIndex(h,"priority"),
+      iCo=csvHeaderIndex(h,"component"),iDe=csvHeaderIndex(h,"description"),iAc=csvHeaderIndex(h,"action"),
+      iEx=csvHeaderIndex(h,"expected result","result");
+    if(iId<0)return{ok:false,error:"Xray CSV needs Test Case Identifier"};
+    const groups=new Map();
+    for(let r=1;r<matrix.length;r++){
+      const row=matrix[r];
+      const id=String(row[iId]??"").trim();
+      if(!id)continue;
+      if(!groups.has(id))groups.set(id,{title:"",priority:"Medium",component:"",description:"",steps:[]});
+      const g=groups.get(id);
+      const su=String(row[iSu]??"").trim();
+      if(su)g.title=su;
+      const pr=String(row[iPr]??"").trim();
+      if(pr)g.priority=pr;
+      const co=String(row[iCo]??"").trim();
+      if(co)g.component=co;
+      const de=String(row[iDe]??"").trim();
+      if(de)g.description=de;
+      const ac=String(row[iAc]??"").trim();
+      const ex=String(row[iEx]??"").trim();
+      if(ac||ex)g.steps.push({action:ac,expected:ex});
+    }
+    for(const [,g] of groups){
+      if(!g.title)continue;
+      const comp=g.component||"Imported / General";
+      const parts=comp.split(/\s*\/\s*/);
+      const team=parts[0]?.trim()||"Imported";
+      const suite=parts.slice(1).join(" / ").trim()||"General";
+      const desc=g.description||"";
+      const dp=desc.split(/\n\n+/);
+      add(team,{
+        id:newCaseId(),
+        title:g.title,
+        suite,
+        priority:PRIORITIES.includes(g.priority)?g.priority:"Medium",
+        assignee:"Bob",
+        status:"draft",
+        markAsCritical:false,
+        preconditions:(dp[0]||"").trim(),
+        expectedResult:dp.slice(1).join("\n\n").trim(),
+        steps:g.steps.length?g.steps:[],
+        links:[],
+      });
+    }
+  }else if(fmt==="zephyr"){
+    const iN=csvHeaderIndex(h,"name"),iPr=csvHeaderIndex(h,"precondition"),iOb=csvHeaderIndex(h,"objective"),
+      iFo=csvHeaderIndex(h,"folder"),iSt=csvHeaderIndex(h,"status"),iPi=csvHeaderIndex(h,"priority"),iLb=csvHeaderIndex(h,"labels"),
+      iStp=csvHeaderIndex(h,"test script (steps) - step"),iExp=csvHeaderIndex(h,"test script (steps) - expected result");
+    if(iN<0)return{ok:false,error:"Zephyr CSV needs Name column"};
+    let cur=null;
+    const flush=()=>{
+      if(!cur||!cur.title)return;
+      const folder=cur.folder||"Imported/General";
+      const fp=folder.split("/");
+      const team=fp[0]?.trim()||"Imported";
+      const suite=fp.slice(1).join("/").trim()||"General";
+      let assignee="Bob";
+      const lb=cur.labels||"";
+      const m=lb.match(/assignee:\s*([^;]+)/i);
+      if(m){const name=m[1].trim();if(ASSIGNEES.includes(name))assignee=name;}
+      const crit=/\bcritical\b/i.test(lb);
+      add(team,{
+        id:newCaseId(),
+        title:cur.title,
+        suite,
+        priority:PRIORITIES.includes(cur.priority)?cur.priority:"Medium",
+        assignee,
+        status:normStatus(cur.status),
+        markAsCritical:crit,
+        preconditions:cur.preconditions||"",
+        expectedResult:cur.objective||"",
+        steps:cur.steps.length?cur.steps:[],
+        links:[],
+      });
+    };
+    for(let r=1;r<matrix.length;r++){
+      const row=matrix[r];
+      const name=String(row[iN]??"").trim();
+      const step=String(row[iStp]??"").trim();
+      const exp=String(row[iExp]??"").trim();
+      if(name){
+        flush();
+        cur={
+          title:name,
+          preconditions:String(row[iPr]??"").trim(),
+          objective:String(row[iOb]??"").trim(),
+          folder:String(row[iFo]??"").trim(),
+          status:String(row[iSt]??"").trim()||"draft",
+          priority:String(row[iPi]??"").trim()||"Medium",
+          labels:String(row[iLb]??"").trim(),
+          steps:[],
+        };
+      }
+      if(cur&&(step||exp))cur.steps.push({action:step,expected:exp});
+    }
+    flush();
+  }
+  const count=Object.values(merge).reduce((a,b)=>a+b.length,0);
+  if(count===0)return{ok:false,error:"No test cases found in file"};
+  return{ok:true,count,merge};
+}
+function applyCsvImportMerge(prevTeams,merge){
+  const next={...prevTeams};
+  const def=JSON.parse(JSON.stringify(TEAMS_DEFAULT));
+  for(const [tn,newCases] of Object.entries(merge)){
+    const base=next[tn]||def[tn]||{color:"#6b7280",suites:[],cases:[]};
+    const suiteSet=new Set(base.suites||[]);
+    newCases.forEach(c=>{if(c.suite)suiteSet.add(c.suite);});
+    next[tn]=normalizeTeam({
+      ...base,
+      color:base.color||"#6b7280",
+      suites:[...suiteSet],
+      cases:[...(base.cases||[]),...newCases.map(normalizeCase)],
+    });
+  }
+  return next;
+}
+
 function Toast({msg,type}){
   const bg={error:"#450a0a",info:"#1e3a5f",success:"#14532d"}[type]||"#14532d";
   const cl={error:"#f87171",info:"#60a5fa",success:"#4ade80"}[type]||"#4ade80";
@@ -504,22 +977,50 @@ function Sel({value,onChange,options,style}){
   return <select value={value} onChange={e=>onChange(e.target.value)} style={{background:"#374151",color:"#f9fafb",border:"1px solid #4b5563",borderRadius:6,padding:"8px 12px",fontSize:13,cursor:"pointer",...style}}>{options.map(o=><option key={o} value={o}>{o}</option>)}</select>;
 }
 
-// ── CSV MODAL ─────────────────────────────────────────────────────────────────
-function CsvModal({csv,onClose,showToast}){
-  const copy=()=>{const ta=document.getElementById("qa-csv-ta");if(ta){ta.select();document.execCommand("copy");showToast("Copied to clipboard!");}onClose();};
+// ── CSV EXPORT MODAL ───────────────────────────────────────────────────────────
+function CsvModal({teams,onClose,showToast}){
+  const [fmt,setFmt]=useState("legacy");
+  const csv=useMemo(()=>{
+    if(fmt==="legacy")return matrixToCsv(buildLegacyExportMatrix(teams));
+    if(fmt==="xray")return matrixToCsv(buildXrayExportMatrix(teams));
+    return matrixToCsv(buildZephyrExportMatrix(teams));
+  },[fmt,teams]);
+  const copy=async()=>{
+    try{
+      await navigator.clipboard.writeText(csv);
+      showToast("Copied to clipboard!");
+    }catch{
+      const ta=document.getElementById("qa-csv-ta");
+      if(ta){ta.select();document.execCommand("copy");showToast("Copied to clipboard!");}
+    }
+    onClose();
+  };
+  const tab=(id,label)=>(
+    <button type="button" key={id} onClick={()=>setFmt(id)} style={{background:fmt===id?"#374151":"transparent",border:`1px solid ${fmt===id?"#60a5fa":"#4b5563"}`,color:fmt===id?"#f9fafb":"#9ca3af",borderRadius:6,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}}>{label}</button>
+  );
   return (
-    <Overlay onClose={onClose} width={760}>
-      <div style={{padding:"20px 24px 16px",borderBottom:"1px solid #374151",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div><div style={{fontSize:18,fontWeight:700,color:"#f9fafb"}}>Export CSV</div><div style={{fontSize:12,color:"#9ca3af",marginTop:2}}>Click Copy to clipboard then paste into a .csv file</div></div>
-        <button onClick={onClose} style={{background:"none",border:"1px solid #4b5563",color:"#6b7280",borderRadius:7,padding:"6px 12px",fontSize:14,cursor:"pointer"}}>x</button>
+    <Overlay onClose={onClose} width={780}>
+      <div style={{padding:"20px 24px 16px",borderBottom:"1px solid #374151"}}>
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+          <div>
+            <div style={{fontSize:18,fontWeight:700,color:"#f9fafb"}}>Export CSV</div>
+            <div style={{fontSize:12,color:"#9ca3af",marginTop:4,lineHeight:1.45,maxWidth:640}}>{CSV_EXPORT_HINTS[fmt]}</div>
+          </div>
+          <button type="button" onClick={onClose} style={{background:"none",border:"1px solid #4b5563",color:"#6b7280",borderRadius:7,padding:"6px 12px",fontSize:14,cursor:"pointer"}}>x</button>
+        </div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:14}}>
+          {tab("legacy","QA Hub (round-trip)")}
+          {tab("xray","Xray Test Importer")}
+          {tab("zephyr","Zephyr Squad")}
+        </div>
       </div>
       <div style={{padding:"16px 24px 24px"}}>
         <div style={{background:"#111827",border:"1px solid #374151",borderRadius:8,marginBottom:12}}>
-          <textarea id="qa-csv-ta" readOnly value={csv} onClick={e=>e.target.select()} style={{width:"100%",height:320,background:"transparent",border:"none",color:"#9ca3af",fontSize:11,fontFamily:"monospace",resize:"none",outline:"none",padding:14,boxSizing:"border-box",lineHeight:1.5}}/>
+          <textarea id="qa-csv-ta" readOnly value={csv} onClick={e=>e.target.select()} style={{width:"100%",height:300,background:"transparent",border:"none",color:"#9ca3af",fontSize:11,fontFamily:"monospace",resize:"vertical",outline:"none",padding:14,boxSizing:"border-box",lineHeight:1.5}}/>
         </div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-          <span style={{fontSize:12,color:"#6b7280"}}>Click inside the text area to select all, then Ctrl+C or Cmd+C</span>
-          <button onClick={copy} style={{background:"#3b82f6",border:"none",color:"#fff",borderRadius:7,padding:"9px 20px",fontSize:13,fontWeight:600,cursor:"pointer",flexShrink:0}}>Copy to clipboard</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          <span style={{fontSize:12,color:"#6b7280"}}>Save as UTF-8 .csv, then import in Jira (map columns in Xray/Zephyr wizards).</span>
+          <button type="button" onClick={copy} style={{background:"#3b82f6",border:"none",color:"#fff",borderRadius:7,padding:"9px 20px",fontSize:13,fontWeight:600,cursor:"pointer",flexShrink:0}}>Copy to clipboard</button>
         </div>
       </div>
     </Overlay>
@@ -1088,7 +1589,8 @@ export default function QAHub(){
   const [activeNav,setActiveNav]=useState(()=>readHash(window.location.hash).nav);
   const [activeSuite,setActiveSuite]=useState(()=>readHash(window.location.hash).suite);
   const [modal,setModal]=useState(null);
-  const [csvData,setCsvData]=useState(null);
+  const [showCsvExport,setShowCsvExport]=useState(false);
+  const csvImportRef=useRef(null);
   const [activeRun,setActiveRun]=useState(null);
   const [previewCase,setPreviewCase]=useState(null);
   const [filterPri,setFilterPri]=useState("All");
@@ -1114,7 +1616,7 @@ export default function QAHub(){
               // Preserve Travel and Compete data from previous storage
               Object.keys(sv).forEach(k=>{if(k!=="Ticketing"&&sv[k]?.cases)fresh[k]=sv[k];});
             }
-          }catch{}
+          }catch{/* optional merge */}
           await storageAPI.set(STORAGE_KEY,JSON.stringify(fresh));
           await storageAPI.set(VERSION_KEY,DATA_VERSION);
         }else{
@@ -1122,7 +1624,7 @@ export default function QAHub(){
           const r=await storageAPI.get(STORAGE_KEY);
           if(r?.value)fresh=JSON.parse(r.value);
         }
-      }catch{}
+      }catch{/* initial load optional */}
       skipSave.current=false;
       setTeams(normalizeTeams(fresh));
       setStorageReady(true);
@@ -1223,18 +1725,38 @@ export default function QAHub(){
   const handleStepStatusChange=(caseId,newStatuses)=>{updTeam(activeTeam,cs=>cs.map(c=>c.id===caseId?{...c,stepStatuses:newStatuses}:c));setPreviewCase(prev=>prev?.id===caseId?{...prev,stepStatuses:newStatuses}:prev);};
   const delCase=id=>{updTeam(activeTeam,cs=>cs.filter(c=>c.id!==id));if(previewCase?.id===id)setPreviewCase(null);showToast("Deleted");};
   const cycleSt=id=>{const cy={draft:"active",active:"passed",passed:"failed",failed:"draft"};updTeam(activeTeam,cs=>cs.map(c=>c.id===id?{...c,status:cy[c.status]}:c));};
-  const push=(team,nav,suite=null)=>{skipHashRef.current=true;window.location.hash=buildHash(team,nav,suite);};
+  const push=(team,nav,suite=null)=>{
+    /* eslint-disable react-hooks/immutability -- hash API + ref guard for sync routing */
+    skipHashRef.current=true;
+    window.location.hash=buildHash(team,nav,suite);
+    /* eslint-enable react-hooks/immutability */
+  };
   const saveRun=run=>{setRuns(r=>({...r,[activeTeam]:[...(r[activeTeam]||[]),run]}));setModal(null);setActiveRun(run);push(activeTeam,'Test runs');setActiveNav("Test runs");showToast("Run started");};
   const updRun=u=>{setRuns(r=>({...r,[activeTeam]:(r[activeTeam]||[]).map(x=>x.id===u.id?u:x)}));setActiveRun(u);};
   const delRun=id=>{setRuns(r=>({...r,[activeTeam]:(r[activeTeam]||[]).filter(x=>x.id!==id)}));if(activeRun?.id===id)setActiveRun(null);};
   const goTeam=name=>{push(name,'Test cases');setActiveTeam(name);setActiveSuite(null);setActiveNav("Test cases");setSearch("");setFilterPri("All");setActiveRun(null);setPreviewCase(null);};
   const resetAll=async()=>{if(!window.confirm("Reset all shared data?"))return;try{await storageAPI.delete(STORAGE_KEY);await storageAPI.delete(RUNS_KEY);setTeams(JSON.parse(JSON.stringify(TEAMS_DEFAULT)));setRuns({Ticketing:[],Travel:[],Compete:[]});showToast("Data reset");}catch{showToast("Failed","error");}};
 
-  const exportCSV=()=>{
-    const h=["Team","Suite","Title","Priority","Assignee","Status","Critical","Preconditions","Expected Result","Steps","Links"];
-    const rows=Object.entries(teams).flatMap(([tn,t])=>(t.cases||[]).map(c=>[tn,c.suite,c.title,c.priority,c.assignee,c.status,c.markAsCritical?"Yes":"No",c.preconditions||"",c.expectedResult||"",(c.steps||[]).map(s=>s.action+" | "+s.expected).join(" ;; "),(c.links||[]).map(l=>l.type+": "+l.url).join(" ;; ")]));
-    const esc=v=>'"'+String(v).replace(/"/g,'""')+'"';
-    setCsvData([h,...rows].map(r=>r.map(esc).join(",")).join("\n"));
+  const runCsvImport=e=>{
+    const input=e.target;
+    const f=input.files?.[0];
+    if(!f){input.value="";return;}
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const matrix=parseCsvToMatrix(String(reader.result??""));
+        if(matrix.length<2){showToast("CSV has no data rows","error");input.value="";return;}
+        const kind=detectCsvFormat(matrix[0]);
+        if(!kind){showToast("Unknown CSV format — export from QA Hub or use Xray/Zephyr templates","error");input.value="";return;}
+        const res=importCasesFromMatrix(matrix,kind);
+        if(!res.ok){showToast(res.error,"error");input.value="";return;}
+        if(!window.confirm(`Import ${res.count} test case(s)? New IDs will be assigned. Teams/suites are created from Team/Component/Folder columns.`))return;
+        setTeams(ts=>applyCsvImportMerge(ts,res.merge));
+        showToast(`Imported ${res.count} case(s)`);
+      }catch{showToast("Could not parse CSV","error");}
+      input.value="";
+    };
+    reader.readAsText(f);
   };
 
   const isHome=activeNav==="Home"&&!activeSuite;
@@ -1283,7 +1805,9 @@ export default function QAHub(){
               <span style={{fontSize:11,color:"#6b7280"}}>Shared · Auto-saving</span>
             </div>
             {lastSaved&&<div style={{fontSize:10,color:"#4b5563",marginBottom:6}}>Saved {lastSaved.toLocaleTimeString()}</div>}
-            <button onClick={exportCSV} style={{background:"#1e3a5f",border:"1px solid #3b82f655",color:"#60a5fa",borderRadius:5,padding:"4px 10px",fontSize:11,cursor:"pointer",width:"100%",marginBottom:6,fontWeight:600}}>Export CSV</button>
+            <input ref={csvImportRef} type="file" accept=".csv,text/csv" style={{display:"none"}} onChange={runCsvImport}/>
+            <button type="button" onClick={()=>setShowCsvExport(true)} style={{background:"#1e3a5f",border:"1px solid #3b82f655",color:"#60a5fa",borderRadius:5,padding:"4px 10px",fontSize:11,cursor:"pointer",width:"100%",marginBottom:6,fontWeight:600}}>Export CSV</button>
+            <button type="button" onClick={()=>csvImportRef.current?.click()} style={{background:"#374151",border:"1px solid #4b5563",color:"#d1d5db",borderRadius:5,padding:"4px 10px",fontSize:11,cursor:"pointer",width:"100%",marginBottom:6}}>Import CSV</button>
             <button onClick={resetAll} style={{background:"none",border:"1px solid #374151",color:"#6b7280",borderRadius:5,padding:"4px 10px",fontSize:11,cursor:"pointer",width:"100%"}}>Reset all data</button>
           </div>
         )}
@@ -1372,7 +1896,7 @@ export default function QAHub(){
         )}
       </div>
 
-      {csvData!==null&&<CsvModal csv={csvData} onClose={()=>setCsvData(null)} showToast={showToast}/>}
+      {showCsvExport&&<CsvModal teams={teams} onClose={()=>setShowCsvExport(false)} showToast={showToast}/>}
       {modal==="teams"&&<Overlay onClose={()=>setModal(null)} width={520}><TeamEditor teams={teams} onSave={saveTeams} onClose={()=>setModal(null)}/></Overlay>}
       {modal==="suites"&&<Overlay onClose={()=>setModal(null)} width={520}><SuiteEditor teamName={activeTeam} teamColor={team.color} suites={team.suites} onSave={saveSuites} onClose={()=>setModal(null)}/></Overlay>}
       {modal==="newrun"&&<Overlay onClose={()=>setModal(null)} width={680}><NewRunForm cases={allCases} teamName={activeTeam} teamColor={team.color} onSave={saveRun} onCancel={()=>setModal(null)}/></Overlay>}
