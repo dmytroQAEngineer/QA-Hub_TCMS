@@ -1,16 +1,25 @@
-# React + Vite
+# QA-Hub_TCMS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite app for test case management.
 
-Currently, two official plugins are available:
+## Scripts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Command        | Description              |
+| -------------- | ------------------------ |
+| `npm run dev`  | Local dev server         |
+| `npm run build`| Production build         |
+| `npm run lint` | ESLint                   |
+| `npm run deploy` | Publish `dist` via gh-pages |
 
-## React Compiler
+## GitHub Pages
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Production builds set `base: '/QA-Hub_TCMS/'` in `vite.config.js` so assets load correctly for a project site.
 
-## Expanding the ESLint configuration
+`.github/workflows/deploy.yml` builds and publishes `./dist` to the `gh-pages` branch (works for any repo name).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+**Live site:** [https://dmytroqaengineer.github.io/QA-Hub_TCMS/](https://dmytroqaengineer.github.io/QA-Hub_TCMS/)
+
+## Stack
+
+- [Vite](https://vite.dev/) + [React 19](https://react.dev/)
+- [Firebase](https://firebase.google.com/) (Realtime DB via `src/storage.js`)
