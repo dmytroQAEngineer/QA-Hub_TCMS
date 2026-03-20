@@ -15,7 +15,8 @@ React + Vite app for test case management.
 
 Production builds set `base: '/QA-Hub_TCMS/'` in `vite.config.js` so assets load correctly for a project site.
 
-`.github/workflows/deploy.yml` builds and publishes `./dist` to the `gh-pages` branch (works for any repo name).
+`.github/workflows/deploy.yml` builds and publishes `./dist` to the `gh-pages` branch (works for any repo name).  
+Do not add a second Pages workflow that uploads the raw repo — that serves unbuilt `index.html` and breaks the app.
 
 **Live site:** [https://dmytroqaengineer.github.io/QA-Hub_TCMS/](https://dmytroqaengineer.github.io/QA-Hub_TCMS/)
 
