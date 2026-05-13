@@ -588,16 +588,48 @@ const REGRESSION_CASES = RAW_CASES.map(([id,title,suite,priority,assignee,markAs
   links: rawLinks.map(([type,url]) => ({type,url})),
 }));
 
+const DEFAULT_TEAM = "Tickets";
 const TEAMS_DEFAULT = {
-  Ticketing:{ color:"#3b82f6", suites:["Event Management","Ticket Management","Checkout and Payments","Snap Entry","Season Passes","Accounting and Reporting","Authentication"], cases:[] },
-  Travel:{ color:"#22c55e", suites:["Search","Booking","Payments","Cancellation"], cases:[] },
-  Compete:{ color:"#a855f7", suites:["Onboarding","Leaderboard","Scoring","Reporting"], cases:[] },
+  Tickets:{
+    color:"#3b82f6",
+    suites:["Event Management","Ticket Management","Checkout and Payments","Snap Entry","Season Passes","Accounting and Reporting","Authentication"],
+    cases:[],
+  },
 };
+/** Merge legacy Ticketing / Travel / Compete into Tickets; keep any other team keys as-is. */
+function consolidateTeamsToTickets(raw){
+  if(!raw||typeof raw!=="object")return JSON.parse(JSON.stringify(TEAMS_DEFAULT));
+  const keys=Object.keys(raw);
+  const legacy=new Set(["Ticketing","Travel","Compete"]);
+  const hasLegacy=keys.some(k=>legacy.has(k));
+  if(!hasLegacy){
+    if(keys.includes(DEFAULT_TEAM))return JSON.parse(JSON.stringify(raw));
+    return JSON.parse(JSON.stringify(TEAMS_DEFAULT));
+  }
+  const suiteSet=new Set([...TEAMS_DEFAULT.Tickets.suites]);
+  const byId=new Map();
+  let color=TEAMS_DEFAULT.Tickets.color;
+  const pull=(name,t)=>{
+    if(!t||typeof t!=="object")return;
+    if(name==="Ticketing"||name===DEFAULT_TEAM)color=typeof t.color==="string"?t.color:color;
+    (t.suites||[]).forEach(s=>suiteSet.add(s));
+    (t.cases||[]).forEach(c=>{if(c&&typeof c.id!=="undefined")byId.set(c.id,c);});
+  };
+  for(const name of["Ticketing","Travel","Compete",DEFAULT_TEAM]){
+    if(raw[name])pull(name,raw[name]);
+  }
+  const out={[DEFAULT_TEAM]:{color,suites:[...suiteSet],cases:[...byId.values()]}};
+  for(const k of keys){
+    if(legacy.has(k)||k===DEFAULT_TEAM)continue;
+    out[k]=raw[k];
+  }
+  return out;
+}
 
 const STORAGE_KEY  = "qa-hub-shared-data";
 const RUNS_KEY     = "qa-hub-runs";
 const VERSION_KEY  = "qa-hub-data-version";
-const DATA_VERSION = "3";
+const DATA_VERSION = "4";
 
 function normalizeCase(c){
   if(!c||typeof c!=="object")return c;
@@ -624,17 +656,18 @@ function normalizeTeams(data){
   return out;
 }
 function normalizeRuns(raw){
-  if(!raw||typeof raw!=="object")return {};
-  const out={};
-  for(const k of Object.keys(raw)){
-    const arr=raw[k];
-    if(!Array.isArray(arr)){out[k]=[];continue;}
-    out[k]=arr.map(r=>{
-      if(!r||typeof r!=="object")return r;
-      return {...r,caseIds:Array.isArray(r.caseIds)?r.caseIds:[],results:r.results&&typeof r.results==="object"?r.results:{}};
-    });
+  if(!raw||typeof raw!=="object")return{[DEFAULT_TEAM]:[]};
+  const merged=[];
+  for(const arr of Object.values(raw)){
+    if(!Array.isArray(arr))continue;
+    merged.push(...arr);
   }
-  return out;
+  return{
+    [DEFAULT_TEAM]:merged.map(r=>{
+      if(!r||typeof r!=="object")return r;
+      return{...r,caseIds:Array.isArray(r.caseIds)?r.caseIds:[],results:r.results&&typeof r.results==="object"?r.results:{}};
+    }),
+  };
 }
 
 const PRIORITIES  = ["Low","Medium","High","Critical"];
@@ -648,7 +681,17 @@ const _ns={'Home':'home','Test cases':'cases','Test runs':'runs','Critical issue
 const _sn=Object.fromEntries(Object.entries(_ns).map(([k,v])=>[v,k]));
 const _sl=s=>s.toLowerCase().replace(/[\s/]+/g,'-');
 function buildHash(team,nav,suite){if(nav==='Home')return '#home';const t=_sl(team);if(suite)return `#${t}/suite/${encodeURIComponent(suite)}`;return `#${t}/${_ns[nav]||'cases'}`;}
-function readHash(h){const s=(h||'').replace(/^#/,'');if(!s||s==='home')return{team:'Ticketing',nav:'Home',suite:null};const[ts,ns,...r]=s.split('/');const team=Object.keys(TEAMS_DEFAULT).find(k=>_sl(k)===ts)||'Ticketing';if(ns==='suite')return{team,nav:'Test cases',suite:decodeURIComponent(r.join('/'))};return{team,nav:_sn[ns]||'Test cases',suite:null};}
+function readHash(h){
+  const s=(h||'').replace(/^#/,'');
+  if(!s||s==='home')return{team:DEFAULT_TEAM,nav:'Home',suite:null};
+  const[ts,ns,...r]=s.split('/');
+  const slugNorm=(ts||"").toLowerCase().replace(/-/g,"");
+  let team=Object.keys(TEAMS_DEFAULT).find(k=>_sl(k)===ts);
+  if(!team&&(slugNorm==="ticketing"||slugNorm==="travel"||slugNorm==="compete"))team=DEFAULT_TEAM;
+  if(!team)team=DEFAULT_TEAM;
+  if(ns==='suite')return{team,nav:'Test cases',suite:r.length?decodeURIComponent(r.join('/')):null};
+  return{team,nav:_sn[ns]||'Test cases',suite:null};
+}
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 const pc  = p => ({Low:"#6b7280",Medium:"#f59e0b",High:"#f97316",Critical:"#ef4444"}[p]||"#6b7280");
@@ -1466,7 +1509,7 @@ function HomeScreen({teams,runs,onNavigate}){
         </div>
         <div style={{fontSize:11,fontWeight:700,letterSpacing:".1em",color:"#60a5fa",marginBottom:10,textTransform:"uppercase"}}>Welcome to</div>
         <div style={{fontSize:30,fontWeight:800,color:"#f9fafb",marginBottom:8,lineHeight:1.2}}>QA Hub</div>
-        <div style={{fontSize:14,color:"#9ca3af",maxWidth:520,lineHeight:1.6,marginBottom:24}}>Shared workspace for Ticketing, Travel, and Compete.</div>
+        <div style={{fontSize:14,color:"#9ca3af",maxWidth:520,lineHeight:1.6,marginBottom:24}}>Test case management for the Tickets workspace.</div>
         <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
           {Object.entries(teams).map(([name,t])=>(
             <button key={name} onClick={()=>onNavigate(name)} style={{background:t.color+"22",border:`1.5px solid ${t.color}55`,color:t.color,borderRadius:8,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:7}}>
@@ -1487,7 +1530,7 @@ function HomeScreen({teams,runs,onNavigate}){
       </div>
       <div style={{marginBottom:32}}>
         <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",letterSpacing:".05em",textTransform:"uppercase",marginBottom:14}}>Team Workspaces</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:14}}>
           {Object.entries(teams).map(([name,t])=>{
             const tc=t.cases||[],p=tc.filter(c=>c.status==="passed").length,f=tc.filter(c=>c.status==="failed").length,a=tc.filter(c=>c.status==="active").length,cr=tc.filter(c=>c.markAsCritical).length;
             const nr=(Array.isArray(runs[name])?runs[name]:[]).length;
@@ -1583,7 +1626,7 @@ export default function QAHub(){
   const skipHashRef=useRef(false);
 
   const [teams,setTeams]=useState(null);
-  const [runs,setRuns]=useState({Ticketing:[],Travel:[],Compete:[]});
+  const [runs,setRuns]=useState({Tickets:[]});
   const [storageReady,setStorageReady]=useState(false);
   const [activeTeam,setActiveTeam]=useState(()=>readHash(window.location.hash).team);
   const [activeNav,setActiveNav]=useState(()=>readHash(window.location.hash).nav);
@@ -1594,7 +1637,6 @@ export default function QAHub(){
   const [activeRun,setActiveRun]=useState(null);
   const [previewCase,setPreviewCase]=useState(null);
   const [detailWidth,setDetailWidth]=useState(500);
-  const detailDragRef=useRef(null);
   const [filterPri,setFilterPri]=useState("All");
   const [search,setSearch]=useState("");
   const [collapsed,setCollapsed]=useState(false);
@@ -1609,22 +1651,25 @@ export default function QAHub(){
       try{
         const vr=await storageAPI.get(VERSION_KEY);
         if(!vr?.value||vr.value!==DATA_VERSION){
-          // First deploy after version bump — write fixed cases to Firebase
-          fresh={...fresh,Ticketing:{...fresh.Ticketing,cases:REGRESSION_CASES}};
+          let ticketsCases=[...REGRESSION_CASES];
+          const suiteSet=new Set(TEAMS_DEFAULT.Tickets.suites);
+          let color=TEAMS_DEFAULT.Tickets.color;
           try{
             const prev=await storageAPI.get(STORAGE_KEY);
             if(prev?.value){
-              const sv=JSON.parse(prev.value);
-              // Preserve Travel and Compete data from previous storage
-              Object.keys(sv).forEach(k=>{if(k!=="Ticketing"&&sv[k]?.cases)fresh[k]=sv[k];});
+              const merged=consolidateTeamsToTickets(JSON.parse(prev.value));
+              color=merged.Tickets?.color||color;
+              (merged.Tickets?.suites||[]).forEach(s=>suiteSet.add(s));
+              const regIds=new Set(REGRESSION_CASES.map(c=>c.id));
+              ticketsCases=[...REGRESSION_CASES,...(merged.Tickets?.cases||[]).filter(c=>c&&typeof c.id!=="undefined"&&!regIds.has(c.id))];
             }
           }catch{/* optional merge */}
+          fresh={Tickets:{color,suites:[...suiteSet],cases:ticketsCases}};
           await storageAPI.set(STORAGE_KEY,JSON.stringify(fresh));
           await storageAPI.set(VERSION_KEY,DATA_VERSION);
         }else{
-          // Version matches — read Firebase as source of truth
           const r=await storageAPI.get(STORAGE_KEY);
-          if(r?.value)fresh=JSON.parse(r.value);
+          if(r?.value)fresh=consolidateTeamsToTickets(JSON.parse(r.value));
         }
       }catch{/* initial load optional */}
       skipSave.current=false;
@@ -1737,7 +1782,7 @@ export default function QAHub(){
   const updRun=u=>{setRuns(r=>({...r,[activeTeam]:(r[activeTeam]||[]).map(x=>x.id===u.id?u:x)}));setActiveRun(u);};
   const delRun=id=>{setRuns(r=>({...r,[activeTeam]:(r[activeTeam]||[]).filter(x=>x.id!==id)}));if(activeRun?.id===id)setActiveRun(null);};
   const goTeam=name=>{push(name,'Test cases');setActiveTeam(name);setActiveSuite(null);setActiveNav("Test cases");setSearch("");setFilterPri("All");setActiveRun(null);setPreviewCase(null);};
-  const resetAll=async()=>{if(!window.confirm("Reset all shared data?"))return;try{await storageAPI.delete(STORAGE_KEY);await storageAPI.delete(RUNS_KEY);setTeams(JSON.parse(JSON.stringify(TEAMS_DEFAULT)));setRuns({Ticketing:[],Travel:[],Compete:[]});showToast("Data reset");}catch{showToast("Failed","error");}};
+  const resetAll=async()=>{if(!window.confirm("Reset all shared data?"))return;try{await storageAPI.delete(STORAGE_KEY);await storageAPI.delete(RUNS_KEY);setTeams(JSON.parse(JSON.stringify(TEAMS_DEFAULT)));setRuns({Tickets:[]});showToast("Data reset");}catch{showToast("Failed","error");}};
 
   const runCsvImport=e=>{
     const input=e.target;

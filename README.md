@@ -40,6 +40,18 @@ If **View Page Source** still shows `<script … src="/src/main.jsx">`, the `gh-
 
 **Local fallback:** `npm run build && npm run deploy` (requires SSH access to the remote in `package.json`).
 
+## CSV export / import (Xray & Zephyr)
+
+**Export CSV** opens a modal with three formats:
+
+| Tab | Use case |
+| --- | --- |
+| **QA Hub (round-trip)** | One row per test; **Import CSV** in the sidebar can re-import this file. |
+| **Xray Test Importer** | Multi-row manual tests: same `Test Case Identifier` = one test. `Component` is `Team / Suite`. Map columns in [Xray’s Test Case Importer](https://docs.getxray.app/display/XRAYCLOUD/Importing+Tests+using+Test+Case+Importer). |
+| **Zephyr Squad** | Columns align with [Zephyr Squad CSV import](https://support.smartbear.com/zephyr-squad-cloud/docs/en/test-cases/import-test-cases.html) (`Name`, `Folder` = `Team/Suite`, step columns). Map fields in the Jira import wizard. |
+
+Save files as UTF-8 `.csv`. Jira-side priority/status values may need mapping to your project’s allowed values.
+
 ## Stack
 
 - [Vite](https://vite.dev/) + [React 19](https://react.dev/)
